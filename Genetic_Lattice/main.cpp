@@ -54,10 +54,10 @@ class Fitness{
         Fitness(){
             tric_sum=latticeSum(tric.x,tric.phi,potential);
         }
-    
+        /*
         double operator() (Individual ind) const{
-            return 
-        }
+            return 5;
+        }*/
     
 };
 
