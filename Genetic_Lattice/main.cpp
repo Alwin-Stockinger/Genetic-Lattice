@@ -10,7 +10,8 @@
 
 using namespace std;
 
-int const a=10;
+double const a=1;
+double const lambda=1;
 int n=100;
 
 int kmax=20;
@@ -29,7 +30,7 @@ struct Tric{
 class Potential{
     public:
     double operator() (double r) const{
-        return exp(-r)/r;
+        return exp(-r/lambda)/r;
     }
 };
 
@@ -40,7 +41,7 @@ class LatticeSum{
         for(int k=-kmax;k<=kmax;++k){
             for(int l=-lmax;l<=lmax;++l){
                 if(l!=0||k!=0){
-                    sum+=v(sqrt(pow(k+l*x*cos(phi),2)+pow(l*x*sin(phi),2)));            //optimizable
+                    sum+=v(a*sqrt(pow(k+l*x*cos(phi),2)+pow(l*x*sin(phi),2)));            //optimizable
                 }
             }
         }
@@ -63,8 +64,8 @@ class Fitness{
         }
         
         double operator() (double x,double phi) const{
+            //if(sin(phi)*x>sqrt(0.5)) return 0;
             double sum=latticeSum(x,phi,potential);
-            //cout<<sum<<endl<<tric_sum<<endl;
             return exp(1-sum/tric_sum);
         }
       
@@ -91,14 +92,15 @@ class Individual{
 
     double getX(){
         double accum=accumulate(x.rbegin(),x.rend(),0,[](int i, int j){ return (i<<1)+j;});    //shift the x bits to the left, so that y can be inserted on right site
-        
+        accum++;
         accum/=pow(2,x.size());
         
         return accum;
     }
     double getPhi(){
         double accum=accumulate(phi.rbegin(),phi.rend(),0,[](int x, int y){ return (x<<1)+y;});
-        accum/=pow(2,phi.size())*PI/2.;
+        accum*=PI/2;
+        accum/=pow(2,phi.size());
         return accum;
     }
     double getFitness(){
@@ -108,6 +110,19 @@ class Individual{
 
     void calcFitness(){
         fitness=fit(getX(),getPhi());
+    }
+
+    void printStats(){
+        cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl;
+        cout<<"X Genome=";
+        for(int i=0;i<x.size();i++){
+            cout<<x.at(i);
+        }
+        cout<<endl<<"Phi Genome=";
+        for(int i=0;i<phi.size();i++){
+            cout<<phi.at(i);
+        }
+        cout<<endl;
     }
 
     //Inital Creator
@@ -178,7 +193,7 @@ class Generation{
         //cout<<"children will now be born"<<endl;
         for(int i=0;i<size;i+=2){      // double because 2 children are created
             vector<Individual> child=genChild();
-            cout<<"First child generated"<<endl;
+            //cout<<"First child generated"<<endl;
             children.insert(children.end(),child.begin(),child.end());
         }
         //cout<<"Children become Parents"<<endl;
@@ -188,6 +203,15 @@ class Generation{
     void printIndiv(){
         auto print=[](Individual ind){cout<<"Individual:"<<endl<<"X="<<ind.getX()<<endl<<"Phi="<<ind.getPhi()<<endl<<"Fit="<<ind.getFitness()<<endl<<endl;};
         for_each(indiv.begin(),indiv.end(),print);
+    }
+
+
+    void printBest(){
+        Individual best=indiv.at(0);
+        for(int i=1;i<indiv.size();i++){
+            if(indiv.at(i).getFitness()>best.getFitness()) best=indiv.at(i);
+        }
+        best.printStats();
     }
 
 
@@ -274,14 +298,19 @@ class Generation{
 int main(){
 
 
+    Fitness fit;
+    Generation gen(100,8,6);
 
-    Generation gen(8,8,8);
 
-    gen.printIndiv();
-    cout<<endl<<"Next Generation"<<endl;
-    gen.nextGen(8);
     
-    gen.printIndiv();
+    
+    for(int i=0;i<100;i++){
+        gen.nextGen(100);
+        cout<<endl<<"Generation "<<i<<endl;
+        gen.printBest();
+    }
+
+
     bool x;
     cin>>x;
     return 0;
