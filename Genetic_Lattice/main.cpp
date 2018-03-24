@@ -2,23 +2,25 @@
 #include<random>
 #include<vector>
 #include<cmath>
+#include<iostream>
+
+#define PI 3.14159265
 
 
 using namespace std;
 
-int const a=1;
+int const a=10;
 int n=100;
 
 int kmax=20;
 int lmax=20;
 
-class Individual;
 
 
 struct Tric{
     public:
-    double const phi=60;
-    double const x=a;
+    double const phi=PI/3.;
+    double const x=1.;
 } tric;
 
 class Potential{
@@ -42,6 +44,7 @@ class LatticeSum{
     }
 };
 
+
 class Fitness{
 
     
@@ -54,11 +57,15 @@ class Fitness{
         Fitness(){
             tric_sum=latticeSum(tric.x,tric.phi,potential);
         }
-        /*
-        double operator() (Individual ind) const{
-            return 5;
-        }*/
-    
+        
+        double operator() (double x,double phi) const{
+            double sum=latticeSum(x,phi,potential);
+            cout<<sum<<endl<<tric_sum<<endl;
+            return exp(1-sum/tric_sum);
+        }
+      
+        
+
 };
 
 
@@ -66,13 +73,27 @@ class Individual{
     vector<bool> x;
     vector<bool> phi;
     double fitness;
+    Fitness fit;
 
     public:
-    vector<bool> getX(){
-        return x;
+    double getX(){
+        double accum=accumulate(x.rbegin(),x.rend(),0,[](int i, int j){ return (i<<1)+j;});    //shift the x bits to the left, so that y can be inserted on right site
+        
+        accum/=pow(2,x.size());
+        
+        return accum;
     }
-    vector<bool> getPhi(){
-        return phi;
+    double getPhi(){
+        double accum=accumulate(phi.rbegin(),phi.rend(),0,[](int x, int y){ return (x<<1)+y;});
+        accum/=pow(2,phi.size())*PI/2.;
+        return accum;
+    }
+    double getFitness(){
+        return fitness;
+    }
+
+    void calcFitness(){
+        fitness=fit(getX(),getPhi());
     }
 
 
@@ -84,14 +105,27 @@ class Individual{
         for(int i=0;i<x_length;i++) x.push_back(dis(gen));
         for(int i=0;i<phi_length;i++) phi.push_back(dis(gen));
     }
-
-
-    
-    
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Generation{
     vector<Individual> indiv;
+
+    double genFitness=0;
+
     public:
     vector<Individual> getIndividuals(){
         return indiv;
@@ -104,8 +138,27 @@ class Generation{
         }
     }
 
+    void nextGen(int size){
+        calcGenFitness();
+
+        vector<Individual> children;
+        for(int i=0;i<size;++i){
+            children.push_back(genChild());
+        }
+    }
+
     private:
-  
+    Individual genChild(){
+        
+    }
+
+    void calcGenFitness(){
+        double sum=accumulate(indiv.begin(),indiv.end(),0.,
+            [](double x, Individual y){ 
+            return x+y.getFitness();
+            });
+        genFitness=sum;
+    }
 
 };
 
@@ -113,8 +166,11 @@ class Generation{
 
 
 int main(){
-    Fitness fit;
-    cout<<fit.tric_sum;
+    Fitness fitness;
+    Individual ind(7,7);
+    ind.calcFitness();
+
+    cout<<ind.getFitness()<<endl;
     int x;
     cin>>x;
     return 0;
