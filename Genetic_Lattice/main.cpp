@@ -16,8 +16,8 @@ int n=100;
 int kmax=20;
 int lmax=20;
 
-int parent_amount=2;
-
+int parent_amount=2;        //changes in code have to be made!!!
+double mutation_rate=0.01;
 
 
 struct Tric{
@@ -110,7 +110,7 @@ class Individual{
         fitness=fit(getX(),getPhi());
     }
 
-
+    //Inital Creator
     Individual(int x_length,int phi_length){
         random_device rd;
         mt19937 gen(rd());
@@ -119,10 +119,28 @@ class Individual{
         for(int i=0;i<x_length;i++) x.push_back(dis(gen));
         for(int i=0;i<phi_length;i++) phi.push_back(dis(gen));
     }
-
+    //child Creator
     Individual(vector<bool> xVec, vector<bool> phiVec){ //has to be changed for more or less than 2 parents!!!!!!
         x=xVec;
         phi=phiVec;
+        mutate();
+    }
+
+    private:
+    void mutate(){
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_real_distribution<> dis(0,1);
+        for(int i=0;i<x.size();++i){
+            if(dis(gen)<=mutation_rate){
+                x.at(i)=!x.at(i);
+            }
+        }
+        for(int i=0;i<phi.size();++i){
+            if(dis(gen)<=mutation_rate){
+                phi.at(i)=!phi.at(i);
+            }
+        }
     }
 
 };
@@ -157,13 +175,13 @@ class Generation{
     void nextGen(int size){
         calcGenFitness();
         vector<Individual> children;
-        cout<<"children will now be born"<<endl;
+        //cout<<"children will now be born"<<endl;
         for(int i=0;i<size;i+=2){      // double because 2 children are created
             vector<Individual> child=genChild();
             cout<<"First child generated"<<endl;
             children.insert(children.end(),child.begin(),child.end());
         }
-        cout<<"Children become Parents"<<endl;
+        //cout<<"Children become Parents"<<endl;
         indiv=children;
     }
 
@@ -197,7 +215,7 @@ class Generation{
 
     vector<Individual> genChild(){  //has to be changed for more or less than two parents!
         vector<Individual> parents=getParents(parent_amount);
-        cout<<"Parents are now known!"<<endl;
+        //cout<<"Parents are now known!"<<endl;
         random_device rd;
         mt19937 gen(rd());
         uniform_int_distribution<> disX(0,parents.at(0).getVecX().size());
@@ -211,12 +229,12 @@ class Generation{
         vector<bool>x2(parents.at(0).getVecX().size());
         vector<bool>phi2(parents.at(0).getVecPhi().size());
 
-        cout<<"Genes will be created!"<<endl;
+        //cout<<"Genes will be created!"<<endl;
         for(int i=0;i<cutX;++i){
             x1[i]=parents[0].getVecX().at(i);
             x2[i]=parents[1].getVecX().at(i);
         }
-        cout<<"Secon Gene now edited"<<endl;
+        //cout<<"Secon Gene now edited"<<endl;
         for(int i=cutX;i<parents.at(0).getVecX().size();++i){
             x1[i]=parents[1].getVecX().at(i);
             x2[i]=parents[0].getVecX().at(i);
@@ -231,7 +249,7 @@ class Generation{
             phi2[i]=parents[0].getVecPhi().at(i);
         }
 
-        cout<<"The two children will be created"<<endl;
+        //cout<<"The two children will be created"<<endl;
         Individual child1(x1,phi1);
         Individual child2(x2,phi2);
 
