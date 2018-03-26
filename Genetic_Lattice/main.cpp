@@ -4,6 +4,7 @@
 #include<cmath>
 #include<iostream>
 #include<algorithm>
+#include<string>
 
 #include<thread>
 #include<mutex>
@@ -12,7 +13,7 @@
 
 #include "matplotlibcpp.h"
 
-#define PI 3.14159265
+#define PI 3.141592653589793238462643383279502884
 
 
 using namespace std;
@@ -21,14 +22,14 @@ using namespace std;
 double const lambda=1;
 int n=100;
 
-int kmax=20;
-int lmax=20;
+int kmax=10;
+int lmax=10;
 
 int parent_amount=2;        //changes in code have to be made!!!
 double mutation_rate=0.01;
 
 
-int threadcount=4;
+int threadcount=8;
 
 struct Tric{
     public:
@@ -66,7 +67,7 @@ vector<double> scalevec(vector<double> x1,int s){
 }
 
 double euclid(vector<double> x){
-    //double accum=accumulate(x.rbegin(),x.rend(),0,[](double x, double y){ return x+y*y;});
+    //double accum=accumulate(x.begin(),x.end(),0,[](double x, double y){ return x+y*y;});
     double sum=0;
     for(int i=0;i<x.size();i++){
         sum+=pow(x[i],2);
@@ -119,17 +120,23 @@ class LatticeSum{
 
 
     public:
-    double operator() (double x, double phi, Potential v) const{
+    double operator() (double x, double phi, Potential v,bool min=false) const{
         double sum=0;
         double a=1./sqrt(x*sin(phi));
         vector<double> x1={a,0};
         vector<double> x2={a*x*cos(phi),a*x*sin(phi)};
         
-        
+        if(min){
         vector<vector<double>> cell=minimizeCell(x1,x2);   
         x1=cell[0];
         x2=cell[1];
-        
+        }/*
+        if(euclid(x1)<euclid(x2)){
+            vector<double> temp=x1;
+            x1=x2;
+            x2=temp;
+        }
+        */
         
 
         for(int k=-kmax;k<=kmax;++k){
@@ -159,9 +166,9 @@ class Fitness{
             tric_sum=latticeSum(tric.x,tric.phi,potential);
         }
         
-        double operator() (double x,double phi) const{
+        double operator() (double x,double phi,bool min=false) const{
             //if(phi<PI/6) return 0;
-            double sum=latticeSum(x,phi,potential);
+            double sum=latticeSum(x,phi,potential,min);
             return exp(1-sum/tric_sum);
         }
       
@@ -186,6 +193,42 @@ class Individual{
     }
     vector<bool> getVecPhi(){
         return phi;
+    }
+
+    void setVecX(double dx){
+        dx*=pow(2,x.size());
+        int ix=--dx;
+        vector<bool> vecX;
+
+        for(int i=0;i<x.size();i++){
+            if(ix){
+                vecX.push_back(ix&1);
+                ix>>=1;
+            }
+            else vecX.push_back(0); 
+        }
+        
+        //reverse(vecX.begin(),vecX.end());
+        x=vecX;
+    }
+
+    void setVecPhi(double dx){
+        dx*=pow(2,phi.size());
+        dx/=PI/2;
+        int ix=--dx;
+        
+        vector<bool> vecX;
+
+        for(int i=0;i<phi.size();i++){
+            if(ix){
+                vecX.push_back(ix&1);
+                ix>>=1;
+            }
+            else vecX.push_back(0); 
+        }
+        
+        //reverse(vecX.begin(),vecX.end());
+        phi=vecX;
     }
 
 
@@ -239,6 +282,7 @@ class Individual{
         x=xVec;
         phi=phiVec;
         mutate();
+        correctCell();
     }
 
     private:
@@ -257,6 +301,74 @@ class Individual{
             }
         }
     }
+
+
+    void correctCell(){
+        double x=getX();
+        double phi=getPhi();
+
+        double a=1./sqrt(x*sin(phi));
+        vector<double> x1={a,0};
+        vector<double> x2={a*x*cos(phi),a*x*sin(phi)};
+        
+        
+        vector<vector<double>> vecX=minimizeCell(x1,x2);
+        x1=vecX[0];
+        x2=vecX[1];
+
+        if(euclid(x1)<euclid(x2)){
+            //cout<<phi/PI*180<<endl;
+            vector<double> temp=x1;
+            x1=x2;
+            x2=temp;
+        }
+        
+        
+        a=euclid(x1);
+        x=euclid(x2)/a;
+        phi=acos(x2[0]/a/x); 
+
+        setVecX(x);
+        setVecPhi(phi);
+    }
+
+
+
+
+    vector<vector<double>> minimizeCell(vector<double> x1, vector<double> x2) const{
+        bool minimal=0;
+        double u=circ(x1,x2);
+        while(!minimal){
+            bool xchange=0;
+            double cells[4]={circ(sumvec(x1,x2),x2),circ(subvec(x1,x2),x2),circ(x1,sumvec(x2,x1)),circ(x1,subvec(x2,x1))};
+
+            int smallest=-1;
+            
+            for(int i=0;i<4;i++){
+                if(u>cells[i]){         
+                    smallest=i;
+                    u=cells[i];                        
+                }
+            }
+             
+            switch (smallest){
+                case 0 : x1=sumvec(x1,x2);
+                break;
+                case 1 : x1=subvec(x1,x2);
+                break;
+                case 2 : x2=sumvec(x2,x1);
+                break;
+                case 3 : x2=subvec(x2,x1);
+                break;
+                case -1 : minimal=1;
+                break;
+                default : cout<<"Switch not found"<<endl;
+            }
+            u=circ(x1,x2);
+        }
+        return {x1,x2};
+    }
+
 
 };
 
@@ -298,9 +410,24 @@ class Generation{
         }
     }
 
+
+    Individual getBest(){
+        Individual best=indiv.at(0);
+        for(int i=1;i<indiv.size();i++){
+            if(indiv.at(i).getFitness()>best.getFitness()) best=indiv.at(i);
+        }
+        return best;
+    }
+
+    void printBest(){
+        Individual best=getBest();
+        best.printStats();
+    }
+
+
     void nextGen(int size){
        calcGenFitness();
-        printBest();
+        //printBest();
        vector<Individual> children;
         //cout<<"children will now be born"<<endl;
         
@@ -316,6 +443,7 @@ class Generation{
         //cout<<"Children become Parents"<<endl;
         indiv=children;
         children.clear();
+        //printBest();
     }
 
     
@@ -331,19 +459,7 @@ class Generation{
         return getBest();
     }
 
-    Individual getBest(){
-        Individual best=indiv.at(0);
-        for(int i=1;i<indiv.size();i++){
-            if(indiv.at(i).getFitness()>best.getFitness()) best=indiv.at(i);
-        }
-        return best;
-    }
-
-    void printBest(){
-        Individual best=getBest();
-        best.printStats();
-    }
-
+    
 
     private:
 
@@ -471,23 +587,25 @@ class Climber{
 
     vector<double> hillclimb(double x,double phi, Fitness fit){
         double stepX=0.000001;
-        double stepPhi=0.00001;
+        double stepPhi=0.000001;
         bool top=0;
         double bestfit=0;
         while(!top){
-            while(fit(x+stepX,phi)>fit(x,phi)) x+=stepX;
-            while(fit(x-stepX,phi)>fit(x,phi)) x-=stepX;
-            while(fit(x,phi+stepPhi)>fit(x,phi)) phi+=stepPhi;
-            while(fit(x,phi-stepPhi)>fit(x,phi)) phi-=stepPhi;
-            if(bestfit-fit(x,phi)<0.0000001) top=1;
-            bestfit=fit(x,phi);
+            while(fit(x+stepX,phi,true)>fit(x,phi,true)) x+=stepX;
+            while(fit(x-stepX,phi,true)>fit(x,phi,true)) x-=stepX;
+            while(fit(x,phi+stepPhi,true)>fit(x,phi,true)) phi+=stepPhi;
+            while(fit(x,phi-stepPhi,true)>fit(x,phi,true)) phi-=stepPhi;
+            if(bestfit-fit(x,phi)<0.000001) top=1;
+            bestfit=fit(x,phi,true);
         }
+
         return {x,phi};
     }
 };
 
 namespace plt=matplotlibcpp;
-void plotCell(double x, double phi){
+
+void plotCell(double x, double phi,string plotname="crystall.png"){
     double a=1./sqrt(x*sin(phi));
     vector<double> x1={a,0};
     vector<double> x2={a*x*cos(phi),a*x*sin(phi)};
@@ -510,7 +628,7 @@ void plotCell(double x, double phi){
     //cout<<bo;
     plt::axis("equal");
     //plt::show();
-    plt::save("crystall.png");
+    plt::save(plotname);
     
     cout<<"Plot Saved"<<endl;   
 }
@@ -524,16 +642,16 @@ int main(){
     Fitness fit;
     Generation gen(ind_size,8,8);
 
-    //plotCell(1.,PI/6.);
+  
     
-    for(int j=0;j<10;j++){
+    for(int j=0;j<100;j++){
         for(int i=0;i<100;i++){
-            high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
-            cout<<endl<<"Generation "<<i<<endl;
+            //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
+            //cout<<endl<<"Generation "<<i<<endl;
             gen.nextGen(ind_size);
-            high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
-            duration<double> time_parallel = t_end_parallel - t_start_parallel;
-            cout << "Execution time: " << time_parallel.count()<<endl;
+            //high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
+            //duration<double> time_parallel = t_end_parallel - t_start_parallel;
+            //cout << "Execution time: " << time_parallel.count()<<endl;
             
         }
         cout<<endl<<endl<<"Winner of the Evolution Contest:"<<endl;
@@ -541,8 +659,11 @@ int main(){
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit);
         cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"Fitness="<<fit(top[0],top[1])<<endl;
-    
-        plotCell(top[0],top[1]);
+
+        string plotname="crystall";
+        plotname+=to_string(j);
+        plotname+=".png";
+        plotCell(top[0],top[1],plotname);
     }
     
     
