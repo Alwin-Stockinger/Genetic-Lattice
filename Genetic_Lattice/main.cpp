@@ -5,6 +5,11 @@
 #include<iostream>
 #include<algorithm>
 
+#include<thread>
+#include<mutex>
+#include<chrono>
+#include<ctime>
+
 #include "matplotlibcpp.h"
 
 #define PI 3.14159265
@@ -16,12 +21,14 @@ using namespace std;
 double const lambda=1;
 int n=100;
 
-int kmax=10;
-int lmax=10;
+int kmax=20;
+int lmax=20;
 
 int parent_amount=2;        //changes in code have to be made!!!
 double mutation_rate=0.01;
 
+
+int threadcount=4;
 
 struct Tric{
     public:
@@ -37,7 +44,7 @@ class Potential{
 };
 
 double circ(vector<double> x1, vector<double> x2){
-    return sqrt(pow(x1[0],2)+pow(x1[1],2))+sqrt(pow(x2[0],2)+pow(x1[2],2));
+    return sqrt(pow(x1[0],2)+pow(x1[1],2))+sqrt(pow(x2[0],2)+pow(x2[1],2));
 }
 
 vector<double> sumvec(vector<double> x1, vector<double> x2){
@@ -77,18 +84,20 @@ class LatticeSum{
 
      vector<vector<double>> minimizeCell(vector<double> x1, vector<double> x2) const{
         bool minimal=0;
+        double u=circ(x1,x2);
         while(!minimal){
             bool xchange=0;
             double cells[4]={circ(sumvec(x1,x2),x2),circ(subvec(x1,x2),x2),circ(x1,sumvec(x2,x1)),circ(x1,subvec(x2,x1))};
 
             int smallest=-1;
-            double u=circ(x1,x2);
+            
             for(int i=0;i<4;i++){
-                if(0.1<u-cells[i]){         //HERE IS A BUG
+                if(u>cells[i]){         
                     smallest=i;
                     u=cells[i];                        
-                } 
+                }
             }
+             
             switch (smallest){
                 case 0 : x1=sumvec(x1,x2);
                 break;
@@ -100,16 +109,10 @@ class LatticeSum{
                 break;
                 case -1 : minimal=1;
                 break;
+                default : cout<<"Switch not found"<<endl;
             }
-            //cout<<"still looping with U="<<u<<endl;
+            u=circ(x1,x2);
         }
-        //cout<<"it finishes";
-        /*
-        double a=euclid(x1);
-        double phi=atan(x2[1]/x2[0]);
-        double x=x2[0]
-        */
-       // cout<<"Sometimes we finish!"<<endl;
         return {x1,x2};
     }
     
@@ -269,8 +272,19 @@ class Individual{
 
 class Generation{
     vector<Individual> indiv;
-
     double genFitness=0;
+
+    mutex child_lock;
+
+    void createChildren(vector<Individual> *children,int size){
+        for(int i=0;i<size;i+=2){      // double because 2 children are created
+            vector<Individual> child=genChild();
+            //cout<<"First child generated"<<endl;
+            child_lock.lock();
+            children->insert(children->end(),child.begin(),child.end());
+            child_lock.unlock();
+        }
+    }
 
     public:
     vector<Individual> getIndividuals(){
@@ -285,19 +299,26 @@ class Generation{
     }
 
     void nextGen(int size){
-        calcGenFitness();
+       calcGenFitness();
         printBest();
-       
-        vector<Individual> children;
+       vector<Individual> children;
         //cout<<"children will now be born"<<endl;
-        for(int i=0;i<size;i+=2){      // double because 2 children are created
-            vector<Individual> child=genChild();
-            //cout<<"First child generated"<<endl;
-            children.insert(children.end(),child.begin(),child.end());
+        
+        vector<thread> t;
+
+        for(int i=0;i<threadcount;++i){
+            t.push_back(thread(&Generation::createChildren,this,&children,size/threadcount));       //size has to be devisable by threadcoutn
         }
+        for(int i=0;i<threadcount;++i){
+            t.at(i).join();
+        }
+        
         //cout<<"Children become Parents"<<endl;
         indiv=children;
+        children.clear();
     }
+
+    
 
     void printIndiv(){
         auto print=[](Individual ind){cout<<"Individual:"<<endl<<"X="<<ind.getX()<<endl<<"Phi="<<ind.getPhi()<<endl<<"Fit="<<ind.getFitness()<<endl<<endl;};
@@ -306,6 +327,7 @@ class Generation{
 
     Individual getLastBest(){
         calcGenFitness();
+        printBest();
         return getBest();
     }
 
@@ -399,10 +421,33 @@ class Generation{
         return children;
     }
 
-    void calcGenFitness(){
-        for(int i=0;i<indiv.size();i++){
-            indiv.at(i).calcFitness();
+    mutex indexMutex;
+
+    void threadCalcFitness(vector<Individual> *indiv, int *index){
+        while(true){
+            indexMutex.lock();
+            int i=(*index)--;
+            indexMutex.unlock();
+
+            if(i<0) break;
+
+            indiv->at(i).calcFitness();
+
         }
+    }
+
+    void calcGenFitness(){
+        int nextIndex=indiv.size()-1;
+
+        vector<thread> t;
+
+        for(int i=0;i<threadcount;i++){
+            t.push_back(thread(&Generation::threadCalcFitness,this,&indiv,&nextIndex));
+        }
+        for(int i=0;i<threadcount;i++){
+            t.at(i).join();
+        }
+
 
         genFitness=accumulate(indiv.begin(),indiv.end(),0.,
             [](double x, Individual y){
@@ -411,6 +456,8 @@ class Generation{
             return x+y.getFitness();
             });
     }
+
+    
 
 };
 
@@ -423,8 +470,8 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit){
-        double stepX=0.0001;
-        double stepPhi=0.001;
+        double stepX=0.000001;
+        double stepPhi=0.00001;
         bool top=0;
         double bestfit=0;
         while(!top){
@@ -433,6 +480,7 @@ class Climber{
             while(fit(x,phi+stepPhi)>fit(x,phi)) phi+=stepPhi;
             while(fit(x,phi-stepPhi)>fit(x,phi)) phi-=stepPhi;
             if(bestfit-fit(x,phi)<0.0000001) top=1;
+            bestfit=fit(x,phi);
         }
         return {x,phi};
     }
@@ -455,40 +503,49 @@ void plotCell(double x, double phi){
             p2.push_back(vec[1]);
         }
     }
-    
+    plt::clf();
     bool bo=plt::plot(p1,p2,"ro");
     //cout<<bo;
     //bo=plt::plot(p1,p2);
     //cout<<bo;
     plt::axis("equal");
-    plt::show();
-    plt::save("xkcd.png");
+    //plt::show();
+    plt::save("crystall.png");
     
     cout<<"Plot Saved"<<endl;   
 }
 
-
+using namespace std::chrono;
 
 
 int main(){
-
+    int ind_size=1000;
 
     Fitness fit;
-    Generation gen(1000,8,6);
+    Generation gen(ind_size,8,8);
 
     //plotCell(1.,PI/6.);
     
+    for(int j=0;j<10;j++){
+        for(int i=0;i<100;i++){
+            high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
+            cout<<endl<<"Generation "<<i<<endl;
+            gen.nextGen(ind_size);
+            high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
+            duration<double> time_parallel = t_end_parallel - t_start_parallel;
+            cout << "Execution time: " << time_parallel.count()<<endl;
+            
+        }
+        cout<<endl<<endl<<"Winner of the Evolution Contest:"<<endl;
+        Individual best=gen.getLastBest();
+        Climber climb;
+        vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit);
+        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"Fitness="<<fit(top[0],top[1])<<endl;
     
-    for(int i=0;i<1000;i++){
-        cout<<endl<<"Generation "<<i<<endl;
-        gen.nextGen(100);
+        plotCell(top[0],top[1]);
     }
-    Individual best=gen.getLastBest();
-    Climber climb;
-    vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit);
-    cout<<endl<<endl<<"Top:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl;
     
-    plotCell(top[0],top[1]);
+    
 
     bool b;
     cin>>b;
