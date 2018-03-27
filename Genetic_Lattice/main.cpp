@@ -22,8 +22,10 @@ using namespace std;
 double const lambda=1;
 int n=100;
 
-int kmax=10;
-int lmax=10;
+
+double rcut=lambda*20;
+//int kmax=15;
+//int lmax=15;
 
 int parent_amount=2;        //changes in code have to be made!!!
 double mutation_rate=0.01;
@@ -138,6 +140,11 @@ class LatticeSum{
         }
         */
         
+        int lmax=rcut/a/x;
+        lmax++;
+        int kmax=rcut/a;
+        kmax++;
+
 
         for(int k=-kmax;k<=kmax;++k){
             for(int l=-lmax;l<=lmax;++l){
@@ -613,6 +620,11 @@ void plotCell(double x, double phi,string plotname="crystall.png"){
     vector<double> p1,p2;
 
     
+    int kmax=rcut/a;
+    kmax++;
+    int lmax=rcut/a/x;
+    lmax++;
+
 
     for(int k=-kmax;k<=kmax;++k){
         for(int l=-lmax;l<=lmax;++l){
@@ -667,7 +679,7 @@ int main(){
     }
     
     
-
+    cout<<"FINISHED!"<<endl;
     bool b;
     cin>>b;
     return 0;
