@@ -23,7 +23,7 @@ double const lambda=1;
 int n=100;
 
 
-double rcut=lambda*20;
+double rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
@@ -612,7 +612,7 @@ class Climber{
 
 namespace plt=matplotlibcpp;
 
-void plotCell(double x, double phi,string plotname="crystall.png"){
+void plotCell(double x, double phi,string plotname="crystall.png",double fitness=0){
     double a=1./sqrt(x*sin(phi));
     vector<double> x1={a,0};
     vector<double> x2={a*x*cos(phi),a*x*sin(phi)};
@@ -635,6 +635,8 @@ void plotCell(double x, double phi,string plotname="crystall.png"){
     }
     plt::clf();
     bool bo=plt::plot(p1,p2,"ro");
+    string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180)+" , fitness="+to_string(fitness);
+    plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
     //cout<<bo;
@@ -656,7 +658,7 @@ int main(){
 
   
     
-    for(int j=0;j<100;j++){
+    for(int j=0;j<1;j++){
         for(int i=0;i<100;i++){
             //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
             //cout<<endl<<"Generation "<<i<<endl;
@@ -664,7 +666,12 @@ int main(){
             //high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
             //duration<double> time_parallel = t_end_parallel - t_start_parallel;
             //cout << "Execution time: " << time_parallel.count()<<endl;
-            
+            Individual best=gen.getBest();
+            string plotname="Generation";
+            plotname+=to_string(i);
+            plotname+=".png";
+            best.calcFitness();
+            plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());    
         }
         cout<<endl<<endl<<"Winner of the Evolution Contest:"<<endl;
         Individual best=gen.getLastBest();
