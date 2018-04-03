@@ -673,7 +673,7 @@ int main(){
             best.calcFitness();
             plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());    
         }
-        cout<<endl<<endl<<"Winner of the Evolution Contest:"<<endl;
+        cout<<endl<<endl<<"Winner of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit);
