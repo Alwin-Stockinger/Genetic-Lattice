@@ -69,14 +69,13 @@ vector<double> scalevec(vector<double> x1,int s){
 }
 
 double euclid(vector<double> x){
-    //double accum=accumulate(x.begin(),x.end(),0,[](double x, double y){ return x+y*y;});
+    
     double sum=0;
     for(int i=0;i<x.size();i++){
         sum+=pow(x[i],2);
     }
     
-    //accum=sqrt(accum);
-    //if(accum==0) cout<<x[0]<<"     "<<x[1]<<endl;
+    
     return sqrt(sum);
 }
 
@@ -132,13 +131,7 @@ class LatticeSum{
         vector<vector<double>> cell=minimizeCell(x1,x2);   
         x1=cell[0];
         x2=cell[1];
-        }/*
-        if(euclid(x1)<euclid(x2)){
-            vector<double> temp=x1;
-            x1=x2;
-            x2=temp;
         }
-        */
         
         int lmax=rcut/a/x;
         lmax++;
@@ -594,7 +587,7 @@ class Climber{
 
     vector<double> hillclimb(double x,double phi, Fitness fit){
         double stepX=0.000001;
-        double stepPhi=0.000001;
+        double stepPhi=0.00000001;
         bool top=0;
         double bestfit=0;
         while(!top){
@@ -602,7 +595,7 @@ class Climber{
             while(fit(x-stepX,phi,true)>fit(x,phi,true)) x-=stepX;
             while(fit(x,phi+stepPhi,true)>fit(x,phi,true)) phi+=stepPhi;
             while(fit(x,phi-stepPhi,true)>fit(x,phi,true)) phi-=stepPhi;
-            if(bestfit-fit(x,phi)<0.000001) top=1;
+            if(bestfit-fit(x,phi)<0.0000001) top=1;
             bestfit=fit(x,phi,true);
         }
 
@@ -635,7 +628,7 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     }
     plt::clf();
     bool bo=plt::plot(p1,p2,"ro");
-    string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180)+" , fitness="+to_string(fitness);
+    string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
     plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
@@ -658,7 +651,7 @@ int main(){
 
   
     
-    for(int j=0;j<1;j++){
+    for(int j=0;j<100;j++){
         for(int i=0;i<100;i++){
             //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
             //cout<<endl<<"Generation "<<i<<endl;
@@ -671,7 +664,7 @@ int main(){
             plotname+=to_string(i);
             plotname+=".png";
             best.calcFitness();
-            plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());    
+            //plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());    
         }
         cout<<endl<<endl<<"Winner of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
@@ -682,11 +675,11 @@ int main(){
         string plotname="crystall";
         plotname+=to_string(j);
         plotname+=".png";
-        plotCell(top[0],top[1],plotname);
+        plotCell(top[0],top[1],plotname,fit(top[0],top[1]));
     }
     
     
-    cout<<"FINISHED!"<<endl;
+    cout<<"FINISHED! \nEnter anything to close"<<endl;
     bool b;
     cin>>b;
     return 0;
