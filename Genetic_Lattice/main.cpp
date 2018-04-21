@@ -5,6 +5,7 @@
 #include<iostream>
 #include<algorithm>
 #include<string>
+#include<bitset>
 
 #include<thread>
 #include<mutex>
@@ -20,8 +21,10 @@ using namespace std;
 
 //double const a=1;
 double const lambda=1;
+double const d=lambda;
 int n=100;
 
+int const bitlen=8;
 
 double rcut=lambda*10;
 //int kmax=15;
@@ -35,8 +38,10 @@ int threadcount=8;
 
 struct Tric{
     public:
-    double const phi=PI/3.;
+    double const phi=PI/2.;
     double const x=1;
+    double const cx=1;
+    double const cy=1;
 } tric;
 
 class Potential{
@@ -46,13 +51,13 @@ class Potential{
     }
 };
 
-double circ(vector<double> x1, vector<double> x2){
+double circ(vector<double> x1, vector<double> x2){  //Umfang=Circumfrance
     return sqrt(pow(x1[0],2)+pow(x1[1],2))+sqrt(pow(x2[0],2)+pow(x2[1],2));
 }
 
-vector<double> sumvec(vector<double> x1, vector<double> x2){
+vector<double> sumvec(vector<double> x1, vector<double> x2, vector<double> x3){
     vector<double> x;
-    for(int i=0; i<x1.size();++i) x.push_back(x1.at(i)+x2.at(i));
+    for(int i=0; i<x1.size();++i) x.push_back(x1.at(i)+x2.at(i)+x3.at(i));
     return x;
 }
 
@@ -62,7 +67,7 @@ vector<double> subvec(vector<double> x1, vector<double> x2){
     return x;
 }
 
-vector<double> scalevec(vector<double> x1,int s){
+vector<double> scalevec(vector<double> x1,double s){
     vector<double> x;
     for(int i=0; i<x1.size();++i) x.push_back(x1.at(i)*s);
     return x;
@@ -121,12 +126,13 @@ class LatticeSum{
 
 
     public:
-    double operator() (double x, double phi, Potential v,bool min=false) const{
+    double operator() (double x, double phi, Potential v,bool min=false, double cx, double cy) const{
         double sum=0;
         double a=1./sqrt(x*sin(phi));
-        vector<double> x1={a,0};
-        vector<double> x2={a*x*cos(phi),a*x*sin(phi)};
-        
+        vector<double> x1={a,0,0};
+        vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
+        vector<double> x3={cx,cy,d};
+
         if(min){
         vector<vector<double>> cell=minimizeCell(x1,x2);   
         x1=cell[0];
@@ -138,11 +144,13 @@ class LatticeSum{
         int kmax=rcut/a;
         kmax++;
 
+        vector<double> veczero={0,0,0};
 
         for(int k=-kmax;k<=kmax;++k){
             for(int l=-lmax;l<=lmax;++l){
                 if(l!=0||k!=0){
-                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l))));            //optimizable
+                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),veczero)));            //optimizable
+                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),x3)));
                     //if(euclid(sumvec(scalevec(x1,k),scalevec(x2,l)))==0) cout<<"Null found at kl"<<k<<" "<<l<<endl;
                 }
             }
@@ -163,28 +171,27 @@ class Fitness{
 
 
         Fitness(){
-            tric_sum=latticeSum(tric.x,tric.phi,potential);
+            tric_sum=latticeSum(tric.x,tric.phi,potential,tric.cx,tric.cy);
         }
         
-        double operator() (double x,double phi,bool min=false) const{
+        double operator() (double x,double phi,bool min=false,double cx,double cy) const{
             //if(phi<PI/6) return 0;
             double sum=latticeSum(x,phi,potential,min);
             return exp(1-sum/tric_sum);
         }
-      
-        
-
 } fit;
+
+
+
 
 
 class Individual{
     vector<bool> x;
     vector<bool> phi;
-
+    bitset<bitlen> cx;
+    bitset<bitlen> cy;
 
     double fitness=0;
-    
-
 
     public:
 
@@ -193,6 +200,14 @@ class Individual{
     }
     vector<bool> getVecPhi(){
         return phi;
+    }
+
+    bitest<bitlen> getBitCx(){
+        return cx;
+    }
+
+    bitest<bitlen> getBitCy(){
+        return cy;
     }
 
     void setVecX(double dx){
@@ -231,6 +246,41 @@ class Individual{
         phi=vecX;
     }
 
+    void setBitCx(double dx){
+        dx*=pow(2,cx.size());
+        int ix=--dx;
+
+        bitset<bitlen> bitCx;
+
+        for(int i=0;i<cx.size();++i){
+            if(ix){
+                bitCx.set(i,ix&1);
+                ix>>=1;
+            }
+            else bitCx.set(i,0);
+        }
+
+        cx=bitCx;
+    }
+
+    void setBitCx(double dx){
+        dx*=pow(2,cy.size());
+        int ix=--dx;
+
+        bitset<bitlen> bitCy;
+
+        for(int i=0;i<cy.size();++i){
+            if(ix){
+                bitCy.set(i,ix&1);
+                ix>>=1;
+            }
+            else bitCy.set(i,0);
+        }
+
+        cy=bitCy;
+    }
+
+
 
     double getX(){
         double accum=accumulate(x.rbegin(),x.rend(),0,[](int i, int j){ return (i<<1)+j;});    //shift the x bits to the left, so that y can be inserted on right site
@@ -246,24 +296,42 @@ class Individual{
         accum/=pow(2,phi.size());
         return accum;
     }
+
+
+    //not sure if right
+    double getCx(){
+        int accum=cx.to_ullong;
+        accum++;
+        accum/=pow(2,cx.size());
+        return accum;
+    }
+    
+    double getCy(){
+        int accum=cy.to_ullong;
+        accum++;
+        accum/=pow(2,cy.size());
+        return accum;
+    }
+
+
     double getFitness(){  
         return fitness;
     }
 
     void calcFitness(){
-        fitness=fit(getX(),getPhi());
+        fitness=fit(getX(),getPhi(),false,getCx(),getCy());
     }
 
     void printStats(){
-        cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl<<"a="<<1./sqrt(sin(getPhi())*getX())<<endl;
-        cout<<"X Genome=";
+        cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl<<"a="<<1./sqrt(sin(getPhi())*getX())<<endl<<"cx="<<getCx()<<endl<<"cy="<<getCy()<<endl;
+        /*cout<<"X Genome=";
         for(int i=0;i<x.size();i++){
             cout<<x.at(i);
         }
         cout<<endl<<"Phi Genome=";
         for(int i=0;i<phi.size();i++){
             cout<<phi.at(i);
-        }
+        }*/
         cout<<endl;
     }
 
@@ -276,11 +344,15 @@ class Individual{
         fitness=1;
         for(int i=0;i<x_length;i++) x.push_back(dis(gen));
         for(int i=0;i<phi_length;i++) phi.push_back(dis(gen));
+        for(int i=0;i<cx.length();i++) cx[i]=dis(gen);
+        for(int i=0;i<cy.length();i++) cy[i]=dis(gen);
     }
     //child Creator
-    Individual(vector<bool> xVec, vector<bool> phiVec){ //has to be changed for more or less than 2 parents!!!!!!
+    Individual(vector<bool> xVec, vector<bool> phiVec, bitset<bitlen> cx, bitset<bitlen> cy){ //has to be changed for more or less than 2 parents!!!!!!
         x=xVec;
         phi=phiVec;
+        this.cx=cx;
+        this.cy=cy;
         mutate();
         correctCell();
     }
@@ -300,6 +372,17 @@ class Individual{
                 phi.at(i)=!phi.at(i);
             }
         }
+        for(int i=0;i<cx.size();++i){
+            if(dis(gen)<=mutation_rate){
+                cx.flip(i);
+            }
+        }
+        for(int i=0;i<cy.size();++i){
+            if(dis(gen)<=mutation_rate){
+                cy.flip(i);
+            }
+        }
+
     }
 
 
@@ -449,7 +532,7 @@ class Generation{
     
 
     void printIndiv(){
-        auto print=[](Individual ind){cout<<"Individual:"<<endl<<"X="<<ind.getX()<<endl<<"Phi="<<ind.getPhi()<<endl<<"Fit="<<ind.getFitness()<<endl<<endl;};
+        auto print=[](Individual ind){cout<<"Individual:"<<endl<<"X="<<ind.getX()<<endl<<"Phi="<<ind.getPhi()<<endl<<"Cx="<<ind.getCx()<<endl<<"Cy="<<ind.getCy()<<endl<<"Fit="<<ind.getFitness()<<endl<<endl;};
         for_each(indiv.begin(),indiv.end(),print);
     }
 
@@ -497,15 +580,25 @@ class Generation{
         mt19937 gen(rd());
         uniform_int_distribution<> disX(0,parents.at(0).getVecX().size());
         uniform_int_distribution<> disPhi(0,parents.at(0).getVecPhi().size());
+        uniform_int_distribution<> disCx(bitlen);
 
         int cutX=disX(gen);
         int cutPhi=disPhi(gen);
+        int cutCx=disCx(gen);
+        int cutCy=disCx(gen);
         
         vector<bool> x1(parents.at(0).getVecX().size());
         vector<bool>phi1(parents.at(0).getVecPhi().size());
         vector<bool>x2(parents.at(0).getVecX().size());
         vector<bool>phi2(parents.at(0).getVecPhi().size());
         
+        bitset<bitlen> cx1;
+        bitset<bitlen> cx2;
+        bitset<bitlen> cy1;
+        bitset<bitlen> cy2;
+        
+
+
         //cout<<"Genes will be created!"<<endl;
         for(int i=0;i<cutX;++i){
             x1[i]=parents[0].getVecX().at(i);
@@ -525,11 +618,29 @@ class Generation{
             phi1[i]=parents[1].getVecPhi().at(i);
             phi2[i]=parents[0].getVecPhi().at(i);
         }
+
+        for(int i=0;i<cutCx;++i){
+            cx1[i]=parents[0].getBitCx()[i];
+            cx2[i]=parents[1].getBitCx()[i];
+        }
+        for(int i=cutPhi;i<cutCx;++i){
+            cx2[i]=parents[0].getBitCx()[i];
+            cx1[i]=parents[1].getBitCx()[i];
+        }
         
+        for(int i=0;i<cutCy;++i){
+            cy1[i]=parents[0].getBitCy()[i];
+            cy2[i]=parents[1].getBitCy()[i];
+        }
+        for(int i=cutPhi;i<cutCy;++i){
+            cy2[i]=parents[0].getBitCy()[i];
+            cy1[i]=parents[1].getBitCy()[i];
+        }
+
 
         //cout<<"The two children will be created"<<endl;
-        Individual child1(x1,phi1);
-        Individual child2(x2,phi2);
+        Individual child1(x1,phi1,cx1,cy1);
+        Individual child2(x2,phi2,cx2,cy2);
 
         vector<Individual> children;
         children.push_back(child1);
