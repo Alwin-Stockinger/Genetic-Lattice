@@ -37,7 +37,8 @@
 			"type_traits": "cpp",
 			"typeinfo": "cpp",
 			"utility": "cpp",
-			"chrono": "cpp"
+			"chrono": "cpp",
+			"bitset": "cpp"
 		}
 	}
 }
