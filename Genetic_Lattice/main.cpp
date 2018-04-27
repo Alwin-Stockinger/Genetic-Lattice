@@ -21,7 +21,7 @@ using namespace std;
 
 //double const a=1;
 double const lambda=1;
-double const d=lambda;
+double const d=lambda*1;
 int n=100;
 
 int const bitlen=8;
@@ -39,10 +39,10 @@ int threadcount=8;
 
 struct Tric{
     public:
-    double const phi=PI/2.;
+    double const phi=PI/3.;
     double const x=1;
-    double const cx=1;
-    double const cy=1;
+    double const cx=0;
+    double const cy=0;
 } tric;
 
 class Potential{
@@ -179,7 +179,7 @@ class Fitness{
         
         double operator() (double x,double phi,bool min=false,double cx=0,double cy=0) const{
             //if(phi<PI/6) return 0;
-            double sum=latticeSum(x,phi,potential,min);
+            double sum=latticeSum(x,phi,potential,min,cx,cy);
             return exp(1-sum/tric_sum);
         }
 } fit;
@@ -305,6 +305,7 @@ class Individual{
     double getCx(){
         double accum=cx.to_ulong();
         accum++;
+        accum*2;
         accum/=pow(2,cx.size());
         return accum;
     }
@@ -312,6 +313,7 @@ class Individual{
     double getCy(){
         double accum=cy.to_ulong();
         accum++;
+        accum*2;        //to make max length to 2
         accum/=pow(2,cy.size());
         return accum;
     }
@@ -535,7 +537,8 @@ class Generation{
     
 
     void printIndiv(){
-        auto print=[](Individual ind){cout<<"Individual:"<<endl<<"X="<<ind.getX()<<endl<<"Phi="<<ind.getPhi()<<endl<<"Cx="<<ind.getCx()<<endl<<"Cy="<<ind.getCy()<<endl<<"Fit="<<ind.getFitness()<<endl<<endl;};
+        calcGenFitness();
+        auto print=[](Individual ind){cout<<"Individual:"<<endl<<"X="<<ind.getX()<<endl<<"Phi="<<ind.getPhi()/PI*180<<endl<<"Cx="<<ind.getCx()<<endl<<"Cy="<<ind.getCy()<<endl<<"Fit="<<ind.getFitness()<<endl<<endl;};
         for_each(indiv.begin(),indiv.end(),print);
     }
 
@@ -707,8 +710,8 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy){
-        double stepX=0.000001;
-        double stepPhi=0.00000001;
+        double stepX=0.001;
+        double stepPhi=0.00001;
         
         bool top=0;
         double bestfit=0;
@@ -722,13 +725,16 @@ class Climber{
             while(fit(x,phi,true,cx-stepX,cy)>fit(x,phi,true,cx,cy)) cx-=stepX;
             while(fit(x,phi,true,cx,cy+stepX)>fit(x,phi,true,cx,cy)) cy+=stepX;
             while(fit(x,phi,true,cx,cy-stepX)>fit(x,phi,true,cx,cy)) cy-=stepX;
-            if(bestfit-fit(x,phi)<0.001) top=1;
+            if(bestfit-fit(x,phi)<0.01) top=1;
             bestfit=fit(x,phi,true);
         }
 
         return {x,phi,cx,cy};
     }
 };
+
+
+
 
 namespace plt=matplotlibcpp;
 
@@ -742,10 +748,8 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     vector<double> u1,u2;
 
     
-    int kmax=rcut/a;
-    kmax++;
-    int lmax=rcut/a/x;
-    lmax++;
+    int kmax=5;
+    int lmax=5;
 
 
     for(int k=-kmax;k<=kmax;++k){
@@ -783,7 +787,7 @@ int main(){
 
   
     
-    for(int j=0;j<100;j++){
+    for(int j=0;j<10;j++){
         for(int i=0;i<100;i++){
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
            // cout<<endl<<"Generation "<<i<<endl;
@@ -791,6 +795,8 @@ int main(){
                 //high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
                 //duration<double> time_parallel = t_end_parallel - t_start_parallel;
                 //cout << "Execution time: " << time_parallel.count()<<endl;
+            
+            
             Individual best=gen.getBest();
             //best.printStats();
             string plotname="Generation";
@@ -800,6 +806,7 @@ int main(){
                 //plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());
             
         }
+        gen.printIndiv();
         cout<<endl<<endl<<"Winner of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
         Climber climb;
