@@ -19,14 +19,14 @@
 
 using namespace std;
 
-//double const a=1;
+
 double const lambda=1;
-double const d=lambda*1;
+double d=lambda*100;
 int n=100;
+double gen_i=1;
+int const bitlen=10;
 
-int const bitlen=8;
-
-double rcut=lambda*13;
+double rcut=lambda*15;
 //int kmax=15;
 //int lmax=15;
 
@@ -39,10 +39,11 @@ int threadcount=8;
 
 struct Tric{
     public:
-    double const phi=PI/3.;
-    double const x=1;
-    double const cx=0;
-    double const cy=0;
+    double const phi=PI/2.;
+    double const x=1./pow(4,1./3.);
+    double const a=1./sqrt(x*sin(phi));
+    double const cx=a/2.;
+    double const cy=a*x/2.;
 } tric;
 
 class Potential{
@@ -58,7 +59,8 @@ double circ(vector<double> x1, vector<double> x2){  //Umfang=Circumfrance
 
 vector<double> sumvec(vector<double> x1, vector<double> x2, vector<double> x3=veczero){
     vector<double> x;
-    for(int i=0; i<x1.size();++i) x.push_back(x1.at(i)+x2.at(i)+x3.at(i));
+
+    for(int i=0; i<x3.size();++i) x.push_back(x1.at(i)+x2.at(i)+x3.at(i));
     return x;
 }
 
@@ -69,6 +71,7 @@ vector<double> subvec(vector<double> x1, vector<double> x2){
 }
 
 vector<double> scalevec(vector<double> x1,double s){
+    
     vector<double> x;
     for(int i=0; i<x1.size();++i) x.push_back(x1.at(i)*s);
     return x;
@@ -136,11 +139,15 @@ class LatticeSum{
         vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
         vector<double> x3={cx,cy,d};
 
+        
         if(min){
         vector<vector<double>> cell=minimizeCell(x1,x2);   
         x1=cell[0];
         x2=cell[1];
+        x1.push_back(0);
+        x2.push_back(0);
         }
+        
         
         int lmax=rcut/a/x;
         lmax++;
@@ -151,9 +158,10 @@ class LatticeSum{
 
         for(int k=-kmax;k<=kmax;++k){
             for(int l=-lmax;l<=lmax;++l){
+                sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),x3)));
                 if(l!=0||k!=0){
+                   
                     sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),veczero)));            //optimizable
-                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),x3)));
                     //if(euclid(sumvec(scalevec(x1,k),scalevec(x2,l)))==0) cout<<"Null found at kl"<<k<<" "<<l<<endl;
                 }
             }
@@ -171,6 +179,7 @@ class Fitness{
     Potential potential;
     public:
     double tric_sum;
+    
 
 
         Fitness(){
@@ -180,7 +189,7 @@ class Fitness{
         double operator() (double x,double phi,bool min=false,double cx=0,double cy=0) const{
             //if(phi<PI/6) return 0;
             double sum=latticeSum(x,phi,potential,min,cx,cy);
-            return exp(1-sum/tric_sum);
+            return exp(1-pow(sum/tric_sum,1.+gen_i*0.1));
         }
 } fit;
 
@@ -305,7 +314,8 @@ class Individual{
     double getCx(){
         double accum=cx.to_ulong();
         accum++;
-        accum*2;
+
+        
         accum/=pow(2,cx.size());
         return accum;
     }
@@ -313,7 +323,8 @@ class Individual{
     double getCy(){
         double accum=cy.to_ulong();
         accum++;
-        accum*2;        //to make max length to 2
+     
+
         accum/=pow(2,cy.size());
         return accum;
     }
@@ -359,7 +370,9 @@ class Individual{
         this->cx=cx;
         this->cy=cy;
         mutate();
+
         correctCell();
+
     }
 
     private:
@@ -396,8 +409,8 @@ class Individual{
         double phi=getPhi();
 
         double a=1./sqrt(x*sin(phi));
-        vector<double> x1={a,0};
-        vector<double> x2={a*x*cos(phi),a*x*sin(phi)};
+        vector<double> x1={a,0,0};
+        vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
         
         
         vector<vector<double>> vecX=minimizeCell(x1,x2);
@@ -710,8 +723,8 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy){
-        double stepX=0.001;
-        double stepPhi=0.00001;
+        double stepX=0.00001;
+        double stepPhi=0.000001;
         
         bool top=0;
         double bestfit=0;
@@ -725,7 +738,7 @@ class Climber{
             while(fit(x,phi,true,cx-stepX,cy)>fit(x,phi,true,cx,cy)) cx-=stepX;
             while(fit(x,phi,true,cx,cy+stepX)>fit(x,phi,true,cx,cy)) cy+=stepX;
             while(fit(x,phi,true,cx,cy-stepX)>fit(x,phi,true,cx,cy)) cy-=stepX;
-            if(bestfit-fit(x,phi)<0.01) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy)<0.00000001) top=1;
             bestfit=fit(x,phi,true);
         }
 
@@ -740,8 +753,8 @@ namespace plt=matplotlibcpp;
 
 void plotCell(double x, double phi,string plotname="crystall.png",double fitness=0, double cx=0, double cy=0){
     double a=1./sqrt(x*sin(phi));
-    vector<double> x1={a,0};
-    vector<double> x2={a*x*cos(phi),a*x*sin(phi)};
+    vector<double> x1={a,0,0};
+    vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
     vector<double> c={cx,cy};
 
     vector<double> p1,p2;
@@ -765,6 +778,7 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     plt::clf();
     bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs");
     string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
+    title="d="+to_string(d)+" lambda";
     plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
@@ -783,12 +797,14 @@ int main(){
     int ind_size=1000;
 
     Fitness fit;
-    Generation gen(ind_size,8,8);
+    Generation gen(ind_size,10,10);
 
   
     
-    for(int j=0;j<10;j++){
-        for(int i=0;i<100;i++){
+    for(int j=0;j<100;j++){
+        for(int i=0;i<200;i++){
+            gen_i=i+1;
+            //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
            // cout<<endl<<"Generation "<<i<<endl;
             gen.nextGen(ind_size);
@@ -806,19 +822,19 @@ int main(){
                 //plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());
             
         }
-        gen.printIndiv();
+        //gen.printIndiv();
         cout<<endl<<endl<<"Winner of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy());
-        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1])<<endl;
+        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3])<<endl;
 
         string plotname="crystall";
         plotname+=to_string(j);
         plotname+=".png";
         plotCell(top[0],top[1],plotname,fit(top[0],top[1]),top[2],top[3]);
     }
-    
+
     
     cout<<"FINISHED! \nEnter anything to close"<<endl;
     bool b;
