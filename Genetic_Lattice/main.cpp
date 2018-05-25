@@ -21,7 +21,7 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*100;
+double d=lambda*10;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
@@ -306,6 +306,7 @@ class Individual{
         accum++;
         accum*=PI/2;
         accum/=pow(2,phi.size());
+        
         return accum;
     }
 
@@ -407,6 +408,7 @@ class Individual{
     void correctCell(){
         double x=getX();
         double phi=getPhi();
+        
 
         double a=1./sqrt(x*sin(phi));
         vector<double> x1={a,0,0};
@@ -428,6 +430,15 @@ class Individual{
         a=euclid(x1);
         x=euclid(x2)/a;
         phi=acos(x2[0]/a/x); 
+
+
+        double cx=getCx();
+        double cy=getCy();
+        if(cy>cx){
+            bitset<bitlen> temp=this->cx;
+            this->cx=this->cy;
+            this->cy=temp;
+        }
 
         setVecX(x);
         setVecPhi(phi);
@@ -723,22 +734,31 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy){
-        double stepX=0.00001;
-        double stepPhi=0.000001;
+        double stepX=0.0001;
+        double stepPhi=0.00001;
         
         bool top=0;
         double bestfit=0;
 
         while(!top){
+
+            
+
+
+
+
             while(fit(x+stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy)) x+=stepX;
             while(fit(x-stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy)) x-=stepX;
-            while(fit(x,phi+stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy)) phi+=stepPhi;
-            while(fit(x,phi-stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy)) phi-=stepPhi;
+            
             while(fit(x,phi,true,cx+stepX,cy)>fit(x,phi,true,cx,cy)) cx+=stepX;
             while(fit(x,phi,true,cx-stepX,cy)>fit(x,phi,true,cx,cy)) cx-=stepX;
             while(fit(x,phi,true,cx,cy+stepX)>fit(x,phi,true,cx,cy)) cy+=stepX;
             while(fit(x,phi,true,cx,cy-stepX)>fit(x,phi,true,cx,cy)) cy-=stepX;
-            if(bestfit-fit(x,phi,true,cx,cy)<0.00000001) top=1;
+
+            while(fit(x,phi+stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy)) phi+=stepPhi;
+            while(fit(x,phi-stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy)) phi-=stepPhi;
+
+            if(bestfit-fit(x,phi,true,cx,cy)<0.0001) top=1;
             bestfit=fit(x,phi,true);
         }
 
@@ -802,7 +822,7 @@ int main(){
   
     
     for(int j=0;j<100;j++){
-        for(int i=0;i<200;i++){
+        for(int i=0;i<300;i++){
             gen_i=i+1;
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
@@ -823,8 +843,10 @@ int main(){
             
         }
         //gen.printIndiv();
-        cout<<endl<<endl<<"Winner of the Evolution Contest "<<j<<" :"<<endl;
+        cout<<endl<<endl<<"Winners of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
+        //cout<<endl<<endl<<"ALL THE INDIVS"<<endl;
+        //gen.printIndiv();
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy());
         cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3])<<endl;
