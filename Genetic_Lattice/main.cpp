@@ -21,27 +21,32 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*10;
+double d=lambda*0.1;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
+const int density=10;
 
-double rcut=lambda*15;
+int const layers=0;
+
+double rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
 int parent_amount=2;        //changes in code have to be made!!!
-double mutation_rate=0.01;
+double mutation_rate=0.1;
 
 vector<double> veczero={0,0,0};
 
 int threadcount=8;
 
+int survivors=10;//this many best genes will deifnitly survive
+
 struct Tric{
     public:
     double const phi=PI/2.;
     double const x=1./pow(4,1./3.);
-    double const a=1./sqrt(x*sin(phi));
+    double const a=1./sqrt(x*sin(phi)*density);
     double const cx=a/2.;
     double const cy=a*x/2.;
 } tric;
@@ -134,7 +139,7 @@ class LatticeSum{
     public:
     double operator() (double x, double phi, Potential v,bool min=false, double cx=0, double cy=0) const{
         double sum=0;
-        double a=1./sqrt(x*sin(phi));
+        double a=1./sqrt(x*sin(phi)*density);
         vector<double> x1={a,0,0};
         vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
         vector<double> x3={cx,cy,d};
@@ -149,23 +154,33 @@ class LatticeSum{
         }
         
         
-        int lmax=rcut/a/x;
+        int lmax=rcut/a/x/sin(phi);
         lmax++;
         int kmax=rcut/a;
         kmax++;
 
+
+
+
+        for(int i=1;i<layers/2+1;i++){
+            for(int k=-kmax;k<=kmax;++k){
+            for(int l=-lmax;l<=lmax;++l){
+            sum+=2*v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(x3,i))));
+            }}
+        }
+        if(layers%2)    for(int k=-kmax;k<=kmax;++k){
+            for(int l=-lmax;l<=lmax;++l){
+            sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(x3,layers/2+1))));
+        }}
+        
         
 
         for(int k=-kmax;k<=kmax;++k){
             for(int l=-lmax;l<=lmax;++l){
-                sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),x3)));
-                if(l!=0||k!=0){
-                   
-                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),veczero)));            //optimizable
-                    //if(euclid(sumvec(scalevec(x1,k),scalevec(x2,l)))==0) cout<<"Null found at kl"<<k<<" "<<l<<endl;
-                }
+                if(!(l==0&&k==0)) sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l))));
             }
         }
+
     
         return sum;
     }
@@ -187,7 +202,7 @@ class Fitness{
         }
         
         double operator() (double x,double phi,bool min=false,double cx=0,double cy=0) const{
-            //if(phi<PI/6) return 0;
+            if(phi<PI/7) return 0;
             double sum=latticeSum(x,phi,potential,min,cx,cy);
             return exp(1-pow(sum/tric_sum,1.+gen_i*0.1));
         }
@@ -340,7 +355,7 @@ class Individual{
     }
 
     void printStats(){
-        cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl<<"a="<<1./sqrt(sin(getPhi())*getX())<<endl<<"cx="<<getCx()<<endl<<"cy="<<getCy()<<endl;
+        cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl<<"a="<<1./sqrt(sin(getPhi())*getX()*density)<<endl<<"cx="<<getCx()<<endl<<"cy="<<getCy()<<endl;
         /*cout<<"X Genome=";
         for(int i=0;i<x.size();i++){
             cout<<x.at(i);
@@ -373,6 +388,9 @@ class Individual{
         mutate();
 
         correctCell();
+
+    }
+    Individual(){
 
     }
 
@@ -410,7 +428,7 @@ class Individual{
         double phi=getPhi();
         
 
-        double a=1./sqrt(x*sin(phi));
+        double a=1./sqrt(x*sin(phi)*density);
         vector<double> x1={a,0,0};
         vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
         
@@ -489,7 +507,7 @@ class Individual{
 
 
 
-
+bool fitComp(Individual a, Individual b){ return a.getFitness()<b.getFitness();}
 
 
 
@@ -546,17 +564,27 @@ class Generation{
         vector<thread> t;
 
         for(int i=0;i<threadcount;++i){
-            t.push_back(thread(&Generation::createChildren,this,&children,size/threadcount));       //size has to be devisable by threadcoutn
+            t.push_back(thread(&Generation::createChildren,this,&children,(size-survivors)/threadcount));       //size has to be devisable by threadcoutn
         }
         for(int i=0;i<threadcount;++i){
             t.at(i).join();
         }
+        vector<Individual> surv=getSurvivors(survivors);
+        children.insert(children.end(),surv.begin(),surv.end());
         
         //cout<<"Children become Parents"<<endl;
         indiv=children;
         children.clear();
         //printBest();
     }
+    
+    vector<Individual> getSurvivors(int count){
+        vector<Individual> survivors=indiv;
+        std::sort(indiv.begin(),indiv.end(),fitComp);
+        survivors.resize(count);
+        return survivors;
+    }
+
 
     
 
@@ -772,33 +800,53 @@ class Climber{
 namespace plt=matplotlibcpp;
 
 void plotCell(double x, double phi,string plotname="crystall.png",double fitness=0, double cx=0, double cy=0){
-    double a=1./sqrt(x*sin(phi));
+    double a=1./sqrt(x*sin(phi)*density);
     vector<double> x1={a,0,0};
     vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
     vector<double> c={cx,cy};
 
     vector<double> p1,p2;
     vector<double> u1,u2;
+    vector<double> up1,up2;
 
     
-    int kmax=5;
-    int lmax=5;
+    int lmax=rcut/a/x/sin(phi);;
+    lmax++;
+    int kmax=rcut/a;
+    kmax++;
 
 
+    plt::clf();
+
+    for(int i=-layers/2;i<=(layers+1)/2;i++){
     for(int k=-kmax;k<=kmax;++k){
         for(int l=-lmax;l<=lmax;++l){
-            vector<double> vec=sumvec(scalevec(x1,k),scalevec(x2,l));
-            vector<double> under_vec=sumvec(scalevec(x1,k),scalevec(x2,l),c);
-            p1.push_back(vec[0]);
-            p2.push_back(vec[1]);
-            u1.push_back(under_vec[0]);
-            u2.push_back(under_vec[1]);
+
+            switch (layers){
+                case 2: {
+                    vector<double> upper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-1));
+                    up1.push_back(upper_vec[0]);
+                    up2.push_back(upper_vec[1]);
+                }
+                case 1: {
+                    vector<double> under_vec=sumvec(scalevec(x1,k),scalevec(x2,l),c);
+                    u1.push_back(under_vec[0]);
+                    u2.push_back(under_vec[1]);
+                }
+                case 0: {
+                    vector<double> vec=sumvec(scalevec(x1,k),scalevec(x2,l));
+                    p1.push_back(vec[0]);
+                    p2.push_back(vec[1]);
+                }
+                default: break;
+            }
         }
     }
-    plt::clf();
-    bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs");
+    }
+   
+    bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv");
     string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
-    title="d="+to_string(d)+" lambda";
+    title="d="+to_string(d)+" lambda, with "+to_string(layers+1)+" layers and density="+to_string(density);
     plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
@@ -849,12 +897,13 @@ int main(){
         //gen.printIndiv();
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy());
-        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3])<<endl;
+        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3])<<endl;
 
         string plotname="crystall";
         plotname+=to_string(j);
         plotname+=".png";
         plotCell(top[0],top[1],plotname,fit(top[0],top[1]),top[2],top[3]);
+        gen_i=1;
     }
 
     

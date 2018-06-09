@@ -38,7 +38,10 @@
 			"typeinfo": "cpp",
 			"utility": "cpp",
 			"chrono": "cpp",
-			"bitset": "cpp"
+			"bitset": "cpp",
+			"deque": "cpp",
+			"unordered_map": "cpp",
+			"vector": "cpp"
 		}
 	}
 }
