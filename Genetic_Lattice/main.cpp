@@ -21,13 +21,13 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.1;
+double d=lambda*1;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const int density=10;
+const double density=0.1;
 
-int const layers=0;
+int const layers=3;
 
 double rcut=lambda*10;
 //int kmax=15;
@@ -38,17 +38,18 @@ double mutation_rate=0.1;
 
 vector<double> veczero={0,0,0};
 
-int threadcount=8;
+int threadcount=4;
 
-int survivors=10;//this many best genes will deifnitly survive
+int survivors=1;//this many best genes will deifnitly survive
 
 struct Tric{
     public:
     double const phi=PI/2.;
-    double const x=1./pow(4,1./3.);
+    double const x=1;
     double const a=1./sqrt(x*sin(phi)*density);
     double const cx=a/2.;
     double const cy=a*x/2.;
+    vector<double> hTric={0.5,0.5};
 } tric;
 
 class Potential{
@@ -137,12 +138,17 @@ class LatticeSum{
 
 
     public:
-    double operator() (double x, double phi, Potential v,bool min=false, double cx=0, double cy=0) const{
+    double operator() (double x, double phi, Potential v,bool min=false, double cx=0, double cy=0,vector<double> h=veczero) const{
         double sum=0;
         double a=1./sqrt(x*sin(phi)*density);
         vector<double> x1={a,0,0};
         vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
-        vector<double> x3={cx,cy,d};
+        vector<vector<double>> x3;
+
+        for(int i=h.size()-1;i>=0;i--){
+            vector<double> vec={cx,cy,h[i]};
+            x3.push_back(vec);
+        }
 
         
         if(min){
@@ -159,9 +165,32 @@ class LatticeSum{
         int kmax=rcut/a;
         kmax++;
 
+        for(int i=0;i<h.size();i++){
+            //calculate layer
+            for(int k=-kmax;k<=kmax;++k){
+            for(int l=-lmax;l<=lmax;++l){
+                if(!(l==0&&k==0)) sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l))));
+            }
+            }
+            vector<double> vertVec=veczero;
+            for(int j=i-1;j>=0;j--){    //calculate layers under the current layer
+                vertVec=sumvec(x3[j],vertVec);
+                for(int k=-kmax;k<=kmax;++k){
+                for(int l=-lmax;l<=lmax;++l){
+                sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
+                }}
+            }
+            vertVec=veczero;
+            for(int j=i+1;j<x3.size();j++){    //calculate layers above the current layer
+                vertVec=sumvec(x3[j-1],vertVec);
+                for(int k=-kmax;k<=kmax;++k){
+                for(int l=-lmax;l<=lmax;++l){
+                sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
+                }}
+            }
+        }
 
-
-
+        /*
         for(int i=1;i<layers/2+1;i++){
             for(int k=-kmax;k<=kmax;++k){
             for(int l=-lmax;l<=lmax;++l){
@@ -180,7 +209,7 @@ class LatticeSum{
                 if(!(l==0&&k==0)) sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l))));
             }
         }
-
+        */
     
         return sum;
     }
@@ -198,12 +227,12 @@ class Fitness{
 
 
         Fitness(){
-            tric_sum=latticeSum(tric.x,tric.phi,potential,tric.cx,tric.cy);
+            tric_sum=latticeSum(tric.x,tric.phi,potential,false,tric.cx,tric.cy,tric.hTric);
         }
         
-        double operator() (double x,double phi,bool min=false,double cx=0,double cy=0) const{
-            if(phi<PI/7) return 0;
-            double sum=latticeSum(x,phi,potential,min,cx,cy);
+        double operator() (double x,double phi,bool min=false,double cx=0,double cy=0,vector<double> h=veczero) const{
+            if(phi<PI/7) return 0;  //deletes non sensical solutions
+            double sum=latticeSum(x,phi,potential,min,cx,cy,h);
             return exp(1-pow(sum/tric_sum,1.+gen_i*0.1));
         }
 } fit;
@@ -217,6 +246,7 @@ class Individual{
     vector<bool> phi;
     bitset<bitlen> cx;
     bitset<bitlen> cy;
+    vector<bitset<bitlen>> h;
 
     double fitness=0;
 
@@ -236,6 +266,11 @@ class Individual{
     bitset<bitlen> getBitCy(){
         return cy;
     }
+
+    vector<bitset<bitlen>> getBitH(){
+        return h;
+    }
+
 
     void setVecX(double dx){
         dx*=pow(2,x.size());
@@ -307,6 +342,24 @@ class Individual{
         cy=bitCy;
     }
 
+    void setBitH(vector<double> dhVec){
+        for(int i=0;i<dhVec.size();i++){
+            dhVec[i]*=pow(2,h[i].size());
+            int iH=--dhVec[i];
+
+            bitset<bitlen> bitH;
+
+            for(int j=0;j<h[i].size();j++){
+                if(iH){
+                    bitH.set(j,iH&1);
+                    iH>>=1;
+                }
+                else bitH.set(i,0);
+            }
+            h[i]=bitH;
+        }
+    }
+
 
 
     double getX(){
@@ -346,16 +399,49 @@ class Individual{
     }
 
 
+    vector<double> getH(){
+        vector<double> ret;
+
+
+        for(int i=h.size()-1;i>=0;i--){
+            double accum=h[i].to_ulong();
+            accum++;
+
+            accum/=pow(2,h[i].size());
+            ret.push_back(accum);
+        }
+
+        double sum=0;
+        for(int i=0;i<h.size();i++){
+            sum+=ret[i];
+        }
+        for(int i=0;i<h.size();i++){
+            ret[i]/=sum/d;
+        }
+
+
+
+        return ret;
+    }
+
+
     double getFitness(){  
         return fitness;
     }
 
     void calcFitness(){
-        fitness=fit(getX(),getPhi(),false,getCx(),getCy());
+        fitness=fit(getX(),getPhi(),false,getCx(),getCy(),getH());
     }
 
     void printStats(){
         cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl<<"a="<<1./sqrt(sin(getPhi())*getX()*density)<<endl<<"cx="<<getCx()<<endl<<"cy="<<getCy()<<endl;
+        cout<<"H values:"<<endl;
+        vector<double> hVec=getH();
+        for(int i=0;i<hVec.size();i++){
+            cout<<hVec[i]<<endl;
+        }
+
+
         /*cout<<"X Genome=";
         for(int i=0;i<x.size();i++){
             cout<<x.at(i);
@@ -378,13 +464,19 @@ class Individual{
         for(int i=0;i<phi_length;i++) phi.push_back(dis(gen));
         for(int i=0;i<cx.size();i++) cx[i]=dis(gen);
         for(int i=0;i<cy.size();i++) cy[i]=dis(gen);
+        for(int i=0;i<layers-1;i++){
+            bitset<bitlen> bit;
+            for(int j=0;j<layers-1;j++) bit[j]=dis(gen);
+            h.push_back(bit);
+        }
     }
     //child Creator
-    Individual(vector<bool> xVec, vector<bool> phiVec, bitset<bitlen> cx, bitset<bitlen> cy){ //has to be changed for more or less than 2 parents!!!!!!
+    Individual(vector<bool> xVec, vector<bool> phiVec, bitset<bitlen> cx, bitset<bitlen> cy, vector<bitset<bitlen>> h){ //has to be changed for more or less than 2 parents!!!!!!
         x=xVec;
         phi=phiVec;
         this->cx=cx;
         this->cy=cy;
+        this->h=h;
         mutate();
 
         correctCell();
@@ -419,6 +511,15 @@ class Individual{
                 cy.flip(i);
             }
         }
+
+        for(int i=0;i<h.size();++i){
+            for(int j=0;j<h[i].size();++j){
+                if(dis(gen)<=mutation_rate){
+                    h[i].flip(j);
+                }
+            }
+        }
+
 
     }
 
@@ -647,6 +748,12 @@ class Generation{
         int cutCx=disCx(gen);
         int cutCy=disCx(gen);
         
+        vector<int> cutH;
+        for(int i=0;i<parents.at(0).getBitH().size();++i){
+            cutH.push_back(disCx(gen));
+        }
+
+        
         vector<bool> x1(parents.at(0).getVecX().size());
         vector<bool>phi1(parents.at(0).getVecPhi().size());
         vector<bool>x2(parents.at(0).getVecX().size());
@@ -656,6 +763,9 @@ class Generation{
         bitset<bitlen> cx2;
         bitset<bitlen> cy1;
         bitset<bitlen> cy2;
+
+        vector<bitset<bitlen>> h1;
+        vector<bitset<bitlen>> h2;
         
         /*using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
@@ -696,6 +806,27 @@ class Generation{
             cy2[i]=parents[0].getBitCy()[i];
             cy1[i]=parents[1].getBitCy()[i];
         }
+
+
+
+
+        for(int i=cutH.size()-1;i>=0;--i){
+            bitset<bitlen> bit1;
+            bitset<bitlen> bit2;
+
+
+            for(int j=0;j<cutH[i];++j){
+                bit1[j]=parents[0].getBitH()[i][j];
+                bit2[j]=parents[1].getBitH()[i][j];
+            }
+            for(int j=cutH[i];j<bitlen;++j){
+                bit2[j]=parents[0].getBitH()[i][j];
+                bit1[j]=parents[1].getBitH()[i][j];
+            }
+            h1.push_back(bit1);
+            h2.push_back(bit2);
+        }
+
         
         /*high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
         duration<double> time_parallel = t_end_parallel - t_start_parallel;
@@ -703,8 +834,8 @@ class Generation{
         */
 
         //cout<<"The two children will be created"<<endl;
-        Individual child1(x1,phi1,cx1,cy1);
-        Individual child2(x2,phi2,cx2,cy2);
+        Individual child1(x1,phi1,cx1,cy1,h1);
+        Individual child2(x2,phi2,cx2,cy2,h2);
 
         vector<Individual> children;
         children.push_back(child1);
@@ -761,7 +892,7 @@ class Climber{
 
     public:
 
-    vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy){
+    vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy, vector<double> h){
         double stepX=0.0001;
         double stepPhi=0.00001;
         
@@ -775,16 +906,16 @@ class Climber{
 
 
 
-            while(fit(x+stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy)) x+=stepX;
-            while(fit(x-stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy)) x-=stepX;
+            while(fit(x+stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) x+=stepX;
+            while(fit(x-stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) x-=stepX;
             
-            while(fit(x,phi,true,cx+stepX,cy)>fit(x,phi,true,cx,cy)) cx+=stepX;
-            while(fit(x,phi,true,cx-stepX,cy)>fit(x,phi,true,cx,cy)) cx-=stepX;
-            while(fit(x,phi,true,cx,cy+stepX)>fit(x,phi,true,cx,cy)) cy+=stepX;
-            while(fit(x,phi,true,cx,cy-stepX)>fit(x,phi,true,cx,cy)) cy-=stepX;
+            while(fit(x,phi,true,cx+stepX,cy)>fit(x,phi,true,cx,cy,h)) cx+=stepX;
+            while(fit(x,phi,true,cx-stepX,cy)>fit(x,phi,true,cx,cy,h)) cx-=stepX;
+            while(fit(x,phi,true,cx,cy+stepX)>fit(x,phi,true,cx,cy,h)) cy+=stepX;
+            while(fit(x,phi,true,cx,cy-stepX)>fit(x,phi,true,cx,cy,h)) cy-=stepX;
 
-            while(fit(x,phi+stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy)) phi+=stepPhi;
-            while(fit(x,phi-stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy)) phi-=stepPhi;
+            while(fit(x,phi+stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
+            while(fit(x,phi-stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
 
             if(bestfit-fit(x,phi,true,cx,cy)<0.0001) top=1;
             bestfit=fit(x,phi,true);
@@ -810,9 +941,9 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     vector<double> up1,up2;
 
     
-    int lmax=rcut/a/x/sin(phi);;
+    int lmax=4;
     lmax++;
-    int kmax=rcut/a;
+    int kmax=4;
     kmax++;
 
 
@@ -823,17 +954,17 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
         for(int l=-lmax;l<=lmax;++l){
 
             switch (layers){
-                case 2: {
+                case 3: {
                     vector<double> upper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-1));
                     up1.push_back(upper_vec[0]);
                     up2.push_back(upper_vec[1]);
                 }
-                case 1: {
+                case 2: {
                     vector<double> under_vec=sumvec(scalevec(x1,k),scalevec(x2,l),c);
                     u1.push_back(under_vec[0]);
                     u2.push_back(under_vec[1]);
                 }
-                case 0: {
+                case 1: {
                     vector<double> vec=sumvec(scalevec(x1,k),scalevec(x2,l));
                     p1.push_back(vec[0]);
                     p2.push_back(vec[1]);
@@ -846,7 +977,7 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
    
     bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv");
     string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
-    title="d="+to_string(d)+" lambda, with "+to_string(layers+1)+" layers and density="+to_string(density);
+    title="d="+to_string(d)+" lambda, with "+to_string(layers)+" layers and density="+to_string(density);
     plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
@@ -870,7 +1001,7 @@ int main(){
   
     
     for(int j=0;j<100;j++){
-        for(int i=0;i<300;i++){
+        for(int i=0;i<1000;i++){
             gen_i=i+1;
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
@@ -896,7 +1027,7 @@ int main(){
         //cout<<endl<<endl<<"ALL THE INDIVS"<<endl;
         //gen.printIndiv();
         Climber climb;
-        vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy());
+        vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy(),best.getH());
         cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3])<<endl;
 
         string plotname="crystall";
