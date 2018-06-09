@@ -25,11 +25,11 @@ double d=lambda*1;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=0.1;
+const double density=10;
 
 int const layers=3;
 
-double rcut=lambda*10;
+double rcut=lambda*5;
 //int kmax=15;
 //int lmax=15;
 
@@ -1028,7 +1028,7 @@ int main(){
         //gen.printIndiv();
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy(),best.getH());
-        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3])<<endl;
+        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3],best.getH())<<endl;
 
         string plotname="crystall";
         plotname+=to_string(j);
