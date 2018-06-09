@@ -21,15 +21,15 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*1;
+double d=lambda*0.1;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=10;
+const double density=1;
 
 int const layers=3;
 
-double rcut=lambda*5;
+double rcut=lambda*7;
 //int kmax=15;
 //int lmax=15;
 
@@ -49,7 +49,14 @@ struct Tric{
     double const a=1./sqrt(x*sin(phi)*density);
     double const cx=a/2.;
     double const cy=a*x/2.;
-    vector<double> hTric={0.5,0.5};
+    vector<double> hTric;
+
+    Tric(){
+        for(int i=0;i<layers-1;i++){
+            hTric.push_back(1/(layers-1)*d);
+        }
+    }
+
 } tric;
 
 class Potential{
@@ -1001,7 +1008,7 @@ int main(){
   
     
     for(int j=0;j<100;j++){
-        for(int i=0;i<1000;i++){
+        for(int i=0;i<200;i++){
             gen_i=i+1;
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
