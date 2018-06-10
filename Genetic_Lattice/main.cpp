@@ -29,7 +29,7 @@ const double density=1;
 
 int const layers=3;
 
-double rcut=lambda*10;
+double rcut=lambda*6;
 //int kmax=15;
 //int lmax=15;
 
@@ -961,8 +961,8 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy, vector<double> h){
-        double stepX=0.001;
-        double stepPhi=0.00001;
+        double stepX=0.0001;
+        double stepPhi=0.001;
         
         bool top=0;
         double bestfit=0;
@@ -988,18 +988,49 @@ class Climber{
             for(int i=0;i<h.size();i++){
                 vector<double> hplus=h;
                 hplus[i]+=stepX;
+
+                double sum=0;
+                for(int i=0;i<h.size();i++){
+                    sum+=hplus[i];
+                }
+                for(int i=0;i<h.size();i++){
+                    hplus[i]/=sum/d;
+                }
+
                 
                 while(fit(x,phi,true,cx,cy,hplus)>fit(x,phi,true,cx,cy,h)){
                     h[i]+=stepX;
                     hplus[i]+=stepX;
+
+                    for(int i=0;i<h.size();i++){
+                        sum+=hplus[i];
+                    }
+                    for(int i=0;i<h.size();i++){
+                        hplus[i]/=sum/d;
+                    }
                 } 
 
                 vector<double> hminus=h;
                 hminus[i]-=stepX;
+                sum=0;
+                for(int i=0;i<h.size();i++){
+                    sum+=hminus[i];
+                }
+                for(int i=0;i<h.size();i++){
+                    hminus[i]/=sum/d;
+                }
 
                 while(fit(x,phi,true,cx,cy,hminus)>fit(x,phi,true,cx,cy,h)){
                     h[i]-=stepX;
                     hminus[i]-=stepX;
+
+                    for(int i=0;i<h.size();i++){
+                        sum+=hminus[i];
+                    }
+                    for(int i=0;i<h.size();i++){
+                        hminus[i]/=sum/d;
+                    }
+
                 } 
 
 
@@ -1098,13 +1129,13 @@ int main(){
 
   
    
-    for(int j=1;j<=10;j++){
+    for(int j=1;j<=1000;j++){
         /*d=0.1*j*lambda;
         tric.setH();*/
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
 
-        for(int i=0;i<300;i++){
+        for(int i=0;i<500;i++){
             gen_i=i+1;
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
