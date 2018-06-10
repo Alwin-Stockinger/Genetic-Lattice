@@ -21,15 +21,15 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.1;
+double d=lambda*0.7;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
 const double density=1;
 
-int const layers=3;
+int const layers=2;
 
-double rcut=lambda*7;
+double rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
@@ -53,7 +53,7 @@ struct Tric{
 
     Tric(){
         for(int i=0;i<layers-1;i++){
-            hTric.push_back(1/(layers-1)*d);
+            hTric.push_back(d/(layers-1.));
         }
     }
 
@@ -159,15 +159,15 @@ class LatticeSum{
 
         
         if(min){
-        vector<vector<double>> cell=minimizeCell(x1,x2);   
-        x1=cell[0];
-        x2=cell[1];
-        x1.push_back(0);
-        x2.push_back(0);
+            vector<vector<double>> cell=minimizeCell(x1,x2);   
+            x1=cell[0];
+            x2=cell[1];
+            x1.push_back(0);
+            x2.push_back(0);
         }
         
         
-        int lmax=rcut/a/x/sin(phi);
+        int lmax=rcut/a/x;///sin(phi);
         lmax++;
         int kmax=rcut/a;
         kmax++;
@@ -188,35 +188,14 @@ class LatticeSum{
                 }}
             }
             vertVec=veczero;
-            for(int j=i+1;j<x3.size();j++){    //calculate layers above the current layer
-                vertVec=sumvec(x3[j-1],vertVec);
+            for(int j=i;j<x3.size();j++){    //calculate layers above the current layer
+                vertVec=sumvec(x3[j],vertVec);
                 for(int k=-kmax;k<=kmax;++k){
                 for(int l=-lmax;l<=lmax;++l){
                 sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
                 }}
             }
         }
-
-        /*
-        for(int i=1;i<layers/2+1;i++){
-            for(int k=-kmax;k<=kmax;++k){
-            for(int l=-lmax;l<=lmax;++l){
-            sum+=2*v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(x3,i))));
-            }}
-        }
-        if(layers%2)    for(int k=-kmax;k<=kmax;++k){
-            for(int l=-lmax;l<=lmax;++l){
-            sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(x3,layers/2+1))));
-        }}
-        
-        
-
-        for(int k=-kmax;k<=kmax;++k){
-            for(int l=-lmax;l<=lmax;++l){
-                if(!(l==0&&k==0)) sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l))));
-            }
-        }
-        */
     
         return sum;
     }
@@ -238,7 +217,7 @@ class Fitness{
         }
         
         double operator() (double x,double phi,bool min=false,double cx=0,double cy=0,vector<double> h=veczero) const{
-            if(phi<PI/7) return 0;  //deletes non sensical solutions
+            //if(phi<PI/6) return 0;  //deletes non sensical solutions
             double sum=latticeSum(x,phi,potential,min,cx,cy,h);
             return exp(1-pow(sum/tric_sum,1.+gen_i*0.1));
         }
@@ -281,7 +260,7 @@ class Individual{
 
     void setVecX(double dx){
         dx*=pow(2,x.size());
-        int ix=--dx;
+        long ix=--dx;
         vector<bool> vecX;
 
         for(int i=0;i<x.size();i++){
@@ -299,7 +278,7 @@ class Individual{
     void setVecPhi(double dx){
         dx*=pow(2,phi.size());
         dx/=PI/2;
-        int ix=--dx;
+        long ix=--dx;
         
         vector<bool> vecX;
 
@@ -317,7 +296,7 @@ class Individual{
 
     void setBitCx(double dx){
         dx*=pow(2,cx.size());
-        int ix=--dx;
+        long ix=--dx;
 
         bitset<bitlen> bitCx;
 
@@ -334,7 +313,7 @@ class Individual{
 
     void setBitCy(double dx){
         dx*=pow(2,cy.size());
-        int ix=--dx;
+        long ix=--dx;
 
         bitset<bitlen> bitCy;
 
@@ -352,7 +331,7 @@ class Individual{
     void setBitH(vector<double> dhVec){
         for(int i=0;i<dhVec.size();i++){
             dhVec[i]*=pow(2,h[i].size());
-            int iH=--dhVec[i];
+            long iH=--dhVec[i];
 
             bitset<bitlen> bitH;
 
@@ -370,39 +349,43 @@ class Individual{
 
 
     double getX(){
-        double accum=accumulate(x.rbegin(),x.rend(),0,[](int i, int j){ return (i<<1)+j;});    //shift the x bits to the left, so that y can be inserted on right site
+        long accum=accumulate(x.rbegin(),x.rend(),0,[](int i, int j){ return (i<<1)+j;});    //shift the x bits to the left, so that y can be inserted on right site
         accum++;
-        accum/=pow(2,x.size());
+        double ret=accum;
+        ret/=pow(2,x.size());
         
-        return accum;
+        return ret;
     }
     double getPhi(){
-        double accum=accumulate(phi.rbegin(),phi.rend(),0,[](int x, int y){ return (x<<1)+y;});
+        long accum=accumulate(phi.rbegin(),phi.rend(),0,[](int x, int y){ return (x<<1)+y;});
         accum++;
-        accum*=PI/2;
-        accum/=pow(2,phi.size());
+        double ret=accum;
+        ret*=PI/2;
+        ret/=pow(2,phi.size());
         
-        return accum;
+        return ret;
     }
 
 
     //not sure if right
     double getCx(){
-        double accum=cx.to_ulong();
+        long accum=cx.to_ulong();
         accum++;
 
         
-        accum/=pow(2,cx.size());
-        return accum;
+        double ret=accum;
+        ret/=pow(2,cx.size());
+        return ret;
     }
     
     double getCy(){
-        double accum=cy.to_ulong();
+        long accum=cy.to_ulong();
         accum++;
      
 
-        accum/=pow(2,cy.size());
-        return accum;
+        double ret=accum;
+        ret/=pow(2,cy.size());
+        return ret;
     }
 
 
@@ -411,11 +394,12 @@ class Individual{
 
 
         for(int i=h.size()-1;i>=0;i--){
-            double accum=h[i].to_ulong();
+            long accum=h[i].to_ulong();
             accum++;
 
-            accum/=pow(2,h[i].size());
-            ret.push_back(accum);
+            double element=accum;
+            element/=pow(2,h[i].size());
+            ret.push_back(element);
         }
 
         double sum=0;
@@ -473,7 +457,7 @@ class Individual{
         for(int i=0;i<cy.size();i++) cy[i]=dis(gen);
         for(int i=0;i<layers-1;i++){
             bitset<bitlen> bit;
-            for(int j=0;j<layers-1;j++) bit[j]=dis(gen);
+            for(int j=0;j<bit.size()-1;j++) bit[j]=dis(gen);
             h.push_back(bit);
         }
     }
@@ -530,7 +514,7 @@ class Individual{
 
     }
 
-
+public:
     void correctCell(){
         double x=getX();
         double phi=getPhi();
@@ -554,8 +538,32 @@ class Individual{
         
         
         a=euclid(x1);
+        //cout<<a<<endl;
         x=euclid(x2)/a;
-        phi=acos(x2[0]/a/x); 
+        
+        phi=asin(1./(density*a*a*x));
+
+
+
+        x1={a,0,0};
+        x2={a*x*cos(phi),a*x*sin(phi),0};
+        vecX=minimizeCell(x1,x2);
+        x1=vecX[0];
+        x2=vecX[1];
+        if(euclid(x1)<euclid(x2)){
+            //cout<<phi/PI*180<<endl;
+            vector<double> temp=x1;
+            x1=x2;
+            x2=temp;
+        }
+        a=euclid(x1);
+        //cout<<a<<endl;
+        x=euclid(x2)/a; 
+        phi=asin(1./(density*a*a*x));
+
+
+
+
 
 
         double cx=getCx();
@@ -577,7 +585,8 @@ class Individual{
         bool minimal=0;
         double u=circ(x1,x2);
         while(!minimal){
-            bool xchange=0;
+            /*cout<<x1[0]<<";"<<x1[1]<<endl;
+            cout<<x2[0]<<";"<<x2[1]<<endl<<endl;*/
             double cells[4]={circ(sumvec(x1,x2),x2),circ(subvec(x1,x2),x2),circ(x1,sumvec(x2,x1)),circ(x1,subvec(x2,x1))};
 
             int smallest=-1;
@@ -900,8 +909,8 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy, vector<double> h){
-        double stepX=0.0001;
-        double stepPhi=0.00001;
+        double stepX=0.000001;
+        double stepPhi=0.0000001;
         
         bool top=0;
         double bestfit=0;
@@ -924,7 +933,7 @@ class Climber{
             while(fit(x,phi+stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
             while(fit(x,phi-stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
 
-            if(bestfit-fit(x,phi,true,cx,cy)<0.0001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy)<0.0000001) top=1;
             bestfit=fit(x,phi,true);
         }
 
@@ -948,9 +957,9 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     vector<double> up1,up2;
 
     
-    int lmax=4;
+    int lmax=2;
     lmax++;
-    int kmax=4;
+    int kmax=2;
     kmax++;
 
 
@@ -1003,11 +1012,12 @@ int main(){
     int ind_size=1000;
 
     Fitness fit;
-    Generation gen(ind_size,10,10);
+    Generation gen(ind_size,8,6);
 
   
-    
-    for(int j=0;j<100;j++){
+   
+    for(int j=1;j<=10;j++){
+        d=0.1*j*lambda;
         for(int i=0;i<200;i++){
             gen_i=i+1;
             //d=j*0.1;
@@ -1031,6 +1041,13 @@ int main(){
         //gen.printIndiv();
         cout<<endl<<endl<<"Winners of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
+        for(int o=0;o<best.getVecPhi().size();o++){
+            cout<<best.getVecPhi()[o];
+        }
+        cout<<endl;
+        for(int o=0;o<best.getVecX().size();o++){
+            cout<<best.getVecX()[o];
+        }
         //cout<<endl<<endl<<"ALL THE INDIVS"<<endl;
         //gen.printIndiv();
         Climber climb;
@@ -1042,11 +1059,18 @@ int main(){
         plotname+=".png";
         plotCell(top[0],top[1],plotname,fit(top[0],top[1]),top[2],top[3]);
         gen_i=1;
-    }
-
+    }/*
+    vector<bool> x={0,1,1,0,1,1,1,0};
+    vector<bool> phi={0,0,0,0,0,0,0};
+    Individual a(8,6);
+    Individual b(x,phi,a.getBitCx(),a.getBitCy(),a.getBitH());
+    b.printStats();
+    b.correctCell();
+    b.printStats();*/
+    
     
     cout<<"FINISHED! \nEnter anything to close"<<endl;
-    bool b;
-    cin>>b;
+    bool close;
+    cin>>close;
     return 0;
 }
