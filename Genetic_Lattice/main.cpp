@@ -411,7 +411,7 @@ class Individual{
 
             
             double dret=accum;
-            dret/=pow(2,cx.size());
+            dret/=pow(2,cx[i].size());
             ret.push_back(dret);
         }
         return ret;
@@ -426,7 +426,7 @@ class Individual{
         
 
             double dret=accum;
-            dret/=pow(2,cy.size());
+            dret/=pow(2,cy[i].size());
             ret.push_back(dret);
         }
         return ret;
@@ -1199,6 +1199,7 @@ int main(){
     int ind_size=1000;
 
     Fitness fit;
+
     Generation gen(ind_size,8,6);
 
   
@@ -1208,7 +1209,7 @@ int main(){
         tric.setH();*/
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
-
+        cout<<"hi";
         for(int i=0;i<100;i++){
             gen_i=i+1;
             cout<<gen_i<<" ";
