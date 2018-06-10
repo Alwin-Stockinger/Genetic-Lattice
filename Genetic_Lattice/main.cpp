@@ -1006,11 +1006,14 @@ class Climber{
             }
 
 
-            if(bestfit-fit(x,phi,true,cx,cy)<0.00001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy)<0.0001) top=1;
             bestfit=fit(x,phi,true);
         }
-
-        return {x,phi,cx,cy};
+        vector<double> ret={x,phi,cx,cy};
+        for(int i=0;i<h.size();i++){
+            ret.push_back(h[i]);
+        }
+        return ret;
     }
 };
 
@@ -1131,7 +1134,12 @@ int main(){
         //gen.printIndiv();
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy(),best.getH());
-        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3],best.getH())<<endl;
+        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl;
+        cout<<"H Values:"<<endl;
+        for(int i=4;i<top.size();i++){
+            cout<<top[i]<<endl;
+        }
+        cout<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3],best.getH())<<endl;
 
         string plotname="crystall";
         plotname+=to_string(j);
