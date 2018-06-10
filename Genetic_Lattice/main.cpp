@@ -961,8 +961,8 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy, vector<double> h){
-        double stepX=0.00001;
-        double stepPhi=0.000001;
+        double stepX=0.001;
+        double stepPhi=0.00001;
         
         bool top=0;
         double bestfit=0;
@@ -985,7 +985,28 @@ class Climber{
             while(fit(x,phi+stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
             while(fit(x,phi-stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
 
-            if(bestfit-fit(x,phi,true,cx,cy)<0.000001) top=1;
+            for(int i=0;i<h.size();i++){
+                vector<double> hplus=h;
+                hplus[i]+=stepX;
+                
+                while(fit(x,phi,true,cx,cy,hplus)>fit(x,phi,true,cx,cy,h)){
+                    h[i]+=stepX;
+                    hplus[i]+=stepX;
+                } 
+
+                vector<double> hminus=h;
+                hminus[i]-=stepX;
+
+                while(fit(x,phi,true,cx,cy,hminus)>fit(x,phi,true,cx,cy,h)){
+                    h[i]-=stepX;
+                    hminus[i]-=stepX;
+                } 
+
+
+            }
+
+
+            if(bestfit-fit(x,phi,true,cx,cy)<0.00001) top=1;
             bestfit=fit(x,phi,true);
         }
 
@@ -1007,6 +1028,7 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     vector<double> p1,p2;
     vector<double> u1,u2;
     vector<double> up1,up2;
+    vector<double> upp1,upp2;
 
     
     int lmax=2;
@@ -1022,6 +1044,11 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
         for(int l=-lmax;l<=lmax;++l){
 
             switch (layers){
+                case 4:{
+                    vector<double> uppper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-2));
+                    up1.push_back(uppper_vec[0]);
+                    up2.push_back(uppper_vec[1]);
+                }
                 case 3: {
                     vector<double> upper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-1));
                     up1.push_back(upper_vec[0]);
