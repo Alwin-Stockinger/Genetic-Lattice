@@ -21,15 +21,15 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.05;
+double d=lambda*1;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
 const double density=1;
 
-int const layers=2;
+int const layers=3;
 
-double rcut=lambda*13;
+double rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
@@ -284,8 +284,9 @@ class Individual{
     }
 
     void setVecPhi(double dx){
+        dx/=(PI/2.);
+        //if(dx>1) dx=1;
         dx*=pow(2,phi.size());
-        dx/=(PI/2);
         long ix=--dx;
         
         bitset<bitlen> vecX;
@@ -573,7 +574,12 @@ public:
         //cout<<a<<endl;
         x=euclid(x2)/a;
         
-        phi=acos(x2[0]/(x*a));
+        phi=acos((x1[0]*x2[0]+x1[1]*x2[1])/(euclid(x1)*euclid(x2)));
+        if(phi>PI/2){
+            x2=sumvec(x2,x1);
+            x=euclid(x2)/a;
+            phi=acos((x1[0]*x2[0]+x1[1]*x2[1])/(euclid(x1)*euclid(x2)));
+        } 
         //cout<<phi<<endl;
         /*if(phi<PI/3){
             cout<<"Strange things are happening"<<endl;
@@ -616,7 +622,6 @@ public:
 
         corrected=true;
         lol=phi;
-        tol=density*a*a*x;
     }
 
 
@@ -719,14 +724,20 @@ class Generation{
        vector<Individual> children;
         //cout<<"children will now be born"<<endl;
         
-        vector<thread> t;
 
+        vector<thread> t;
+        if(threadcount==1){
+            createChildren(&children,(size-survivors));
+        }
+        else{
         for(int i=0;i<threadcount;++i){
             t.push_back(thread(&Generation::createChildren,this,&children,(size-survivors)/threadcount));       //size has to be devisable by threadcoutn
         }
         for(int i=0;i<threadcount;++i){
             t.at(i).join();
         }
+        }
+
         vector<Individual> surv=getSurvivors(survivors);
         children.insert(children.end(),surv.begin(),surv.end());
         
@@ -950,8 +961,8 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy, vector<double> h){
-        double stepX=0.000001;
-        double stepPhi=0.0000001;
+        double stepX=0.00001;
+        double stepPhi=0.000001;
         
         bool top=0;
         double bestfit=0;
@@ -963,18 +974,18 @@ class Climber{
 
 
 
-            while(fit(x+stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) x+=stepX;
-            while(fit(x-stepX,phi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) x-=stepX;
+            while(fit(x+stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) x+=stepX;
+            while(fit(x-stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) x-=stepX;
             
-            while(fit(x,phi,true,cx+stepX,cy)>fit(x,phi,true,cx,cy,h)) cx+=stepX;
-            while(fit(x,phi,true,cx-stepX,cy)>fit(x,phi,true,cx,cy,h)) cx-=stepX;
-            while(fit(x,phi,true,cx,cy+stepX)>fit(x,phi,true,cx,cy,h)) cy+=stepX;
-            while(fit(x,phi,true,cx,cy-stepX)>fit(x,phi,true,cx,cy,h)) cy-=stepX;
+            while(fit(x,phi,true,cx+stepX,cy,h)>fit(x,phi,true,cx,cy,h)) cx+=stepX;
+            while(fit(x,phi,true,cx-stepX,cy,h)>fit(x,phi,true,cx,cy,h)) cx-=stepX;
+            while(fit(x,phi,true,cx,cy+stepX,h)>fit(x,phi,true,cx,cy,h)) cy+=stepX;
+            while(fit(x,phi,true,cx,cy-stepX,h)>fit(x,phi,true,cx,cy,h)) cy-=stepX;
 
-            while(fit(x,phi+stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
-            while(fit(x,phi-stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
+            while(fit(x,phi+stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
+            while(fit(x,phi-stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
 
-            if(bestfit-fit(x,phi,true,cx,cy)<0.00000001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy)<0.000001) top=1;
             bestfit=fit(x,phi,true);
         }
 
@@ -1060,7 +1071,10 @@ int main(){
     for(int j=1;j<=10;j++){
         /*d=0.1*j*lambda;
         tric.setH();*/
-        for(int i=0;i<100;i++){
+        using namespace std::chrono;
+        high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
+
+        for(int i=0;i<300;i++){
             gen_i=i+1;
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
@@ -1084,7 +1098,7 @@ int main(){
         cout<<endl<<endl<<"Winners of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
         //best.correctCell();
-        cout<<best.lol<<" "<<best.tol<<endl;
+
         //best.printStats();
         //cout<<endl<<endl<<"ALL THE INDIVS"<<endl;
         //gen.printIndiv();
@@ -1096,6 +1110,13 @@ int main(){
         plotname+=to_string(j);
         plotname+=".png";
         plotCell(top[0],top[1],plotname,fit(top[0],top[1]),top[2],top[3]);
+
+        high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
+        duration<double> time_parallel = t_end_parallel - t_start_parallel;
+        cout << "Execution time: " << time_parallel.count()<<endl;
+
+
+
         gen_i=1;
     }/*
     vector<bool> x={0,1,1,0,1,1,1,0};
