@@ -27,9 +27,9 @@ double gen_i=1;
 int const bitlen=10;
 const double density=1;
 
-int const layers=3;
+int const layers=2;
 
-double rcut=lambda*6;
+double rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
@@ -47,18 +47,36 @@ struct Tric{
     double const phi=PI/2.;
     double const x=1;
     double const a=1./sqrt(x*sin(phi)*density);
-    double const cx=a/2.;
-    double const cy=a*x/2.;
+    vector<double> cx;
+    vector<double> cy;
     vector<double> hTric;
 
     Tric(){
         setH();
+        setCx();
+        setCy();
     }
 
     void setH(){
         hTric.erase(hTric.begin(),hTric.end());
         for(int i=0;i<layers-1;i++){
             hTric.push_back(d/(layers-1.));
+        }
+    }
+
+    void setCx(){
+        cx.erase(cx.begin(),cx.end());
+        for(int i=0;i<layers-1;i++){
+            if(i%2) cx.push_back(a/2.);
+            else cx.push_back(a/-2.);
+        }
+    }
+
+    void setCy(){
+        cy.erase(cy.begin(),cy.end());
+        for(int i=0;i<layers-1;i++){
+            if(i%2) cy.push_back(a*x*sin(phi)/2.);
+            else cy.push_back(-a*x*sin(phi)/2.);
         }
     }
 
@@ -152,15 +170,15 @@ class LatticeSum{
 
 
     public:
-    double operator() (double x, double phi, Potential v,bool min=false, double cx=0, double cy=0,vector<double> h=veczero) const{
+    double operator() (double x, double phi, Potential v,bool min, vector<double> cx, vector<double> cy,vector<double> h) const{
         double sum=0;
         double a=1./sqrt(x*sin(phi)*density);
         vector<double> x1={a,0,0};
         vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
         vector<vector<double>> x3;
 
-        for(int i=h.size()-1;i>=0;i--){
-            vector<double> vec={cx,cy,h[i]};
+        for(int i=0;i<h.size();i++){
+            vector<double> vec={cx[i],cy[i],h[i]};
             x3.push_back(vec);
         }
 
@@ -223,7 +241,7 @@ class Fitness{
             tric_sum=latticeSum(tric.x,tric.phi,potential,false,tric.cx,tric.cy,tric.hTric);
         }
         
-        double operator() (double x,double phi,bool min=false,double cx=0,double cy=0,vector<double> h=veczero) const{
+        double operator() (double x,double phi,bool min,vector<double> cx,vector<double> cy,vector<double> h=veczero) const{
             //if(phi<PI/6) return 0;  //deletes non sensical solutions
             double sum=latticeSum(x,phi,potential,min,cx,cy,h);
             return exp(1-pow(sum/tric_sum,1.+gen_i*0.1));
@@ -237,8 +255,8 @@ class Fitness{
 class Individual{
     bitset<bitlen> x;
     bitset<bitlen> phi;
-    bitset<bitlen> cx;
-    bitset<bitlen> cy;
+    vector<bitset<bitlen>> cx;
+    vector<bitset<bitlen>> cy;
     vector<bitset<bitlen>> h;
 
     double fitness=0;
@@ -252,11 +270,11 @@ class Individual{
         return phi;
     }
 
-    bitset<bitlen> getBitCx(){
+    vector<bitset<bitlen>> getBitCx(){
         return cx;
     }
 
-    bitset<bitlen> getBitCy(){
+    vector<bitset<bitlen>> getBitCy(){
         return cy;
     }
 
@@ -303,38 +321,43 @@ class Individual{
         phi=vecX;
     }
 
-    void setBitCx(double dx){
-        dx*=pow(2,cx.size());
-        long ix=--dx;
+    void setBitCx(vector<double> dxVec){
+        for(int i=0;i<dxVec.size();i++){
+            double dx=dxVec[i];
+            dx*=pow(2,cx[i].size());
+            long ix=--dx;
 
-        bitset<bitlen> bitCx;
+            bitset<bitlen> bitCx;
 
-        for(int i=0;i<cx.size();++i){
-            if(ix){
-                bitCx.set(i,ix&1);
-                ix>>=1;
+            for(int i=0;i<cx[i].size();++i){
+                if(ix){
+                    bitCx.set(i,ix&1);
+                    ix>>=1;
+                }
+                else bitCx.set(i,0);
             }
-            else bitCx.set(i,0);
+            cx[i]=bitCx;
         }
-
-        cx=bitCx;
     }
 
-    void setBitCy(double dx){
-        dx*=pow(2,cy.size());
-        long ix=--dx;
+    void setBitCy(vector<double> dxVec){
+        for(int i=0;i<dxVec.size();++i){
+            double dx=dxVec[i];
+            dx*=pow(2,cy.size());
+            long ix=--dx;
 
-        bitset<bitlen> bitCy;
+            bitset<bitlen> bitCy;
 
-        for(int i=0;i<cy.size();++i){
-            if(ix){
-                bitCy.set(i,ix&1);
-                ix>>=1;
+            for(int i=0;i<cy.size();++i){
+                if(ix){
+                    bitCy.set(i,ix&1);
+                    ix>>=1;
+                }
+                else bitCy.set(i,0);
             }
-            else bitCy.set(i,0);
-        }
 
-        cy=bitCy;
+            cy[i]=bitCy;
+        }
     }
 
     void setBitH(vector<double> dhVec){
@@ -380,23 +403,32 @@ class Individual{
 
 
     //not sure if right
-    double getCx(){
-        long accum=cx.to_ulong();
-        accum++;
+    vector<double> getCx(){
+        vector<double> ret;
+        for(int i=0;i<cx.size();i++){
+            long accum=cx[i].to_ulong();
+            accum++;
 
-        
-        double ret=accum;
-        ret/=pow(2,cx.size());
+            
+            double dret=accum;
+            dret/=pow(2,cx.size());
+            ret.push_back(dret);
+        }
         return ret;
     }
     
-    double getCy(){
-        long accum=cy.to_ulong();
-        accum++;
-     
+    vector<double> getCy(){
+        vector<double> ret;
 
-        double ret=accum;
-        ret/=pow(2,cy.size());
+        for(int i=0;i<cy.size();i++){
+            long accum=cy[i].to_ulong();
+            accum++;
+        
+
+            double dret=accum;
+            dret/=pow(2,cy.size());
+            ret.push_back(dret);
+        }
         return ret;
     }
 
@@ -405,7 +437,7 @@ class Individual{
         vector<double> ret;
 
 
-        for(int i=h.size()-1;i>=0;i--){
+        for(int i=0;i<h.size();i++){
             long accum=h[i].to_ulong();
             accum++;
 
@@ -437,11 +469,13 @@ class Individual{
     }
 
     void printStats(){
-        cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl<<"a="<<1./sqrt(sin(getPhi())*getX()*density)<<endl<<"cx="<<getCx()<<endl<<"cy="<<getCy()<<endl;
+        cout<<"Fitness="<<fitness<<endl<<"x="<<getX()<<endl<<"phi="<<getPhi()/PI*180<<endl<<"a="<<1./sqrt(sin(getPhi())*getX()*density)<<endl;
         cout<<"H values:"<<endl;
         vector<double> hVec=getH();
+        vector<double> cxVec=getCx();
+        vector<double> cyVec=getCy();
         for(int i=0;i<hVec.size();i++){
-            cout<<hVec[i]<<endl;
+            cout<<"h="<<hVec[i]<<"; cx="<<cxVec[i]<<"; cy="<<cyVec[i]<<endl<<endl;
         }
 
 
@@ -465,17 +499,24 @@ class Individual{
         fitness=1;
         for(int i=0;i<x.size();i++) x[i]=dis(gen);
         for(int i=0;i<phi.size();i++) phi[i]=dis(gen);
-        for(int i=0;i<cx.size();i++) cx[i]=dis(gen);
-        for(int i=0;i<cy.size();i++) cy[i]=dis(gen);
+        
         for(int i=0;i<layers-1;i++){
-            bitset<bitlen> bit;
-            for(int j=0;j<bit.size()-1;j++) bit[j]=dis(gen);
-            h.push_back(bit);
+            bitset<bitlen> bitH;
+            bitset<bitlen> bitcx;
+            bitset<bitlen> bitcy;
+
+            for(int j=0;j<bitH.size();j++) bitH[j]=dis(gen);
+            for(int i=0;i<bitcx.size();i++) bitcx[i]=dis(gen);
+            for(int i=0;i<bitcy.size();i++) bitcy[i]=dis(gen);
+
+            h.push_back(bitH);
+            cx.push_back(bitcx);
+            cy.push_back(bitcy);
         }
         correctCell();
     }
     //child Creator
-    Individual(bitset<bitlen> xVec, bitset<bitlen> phiVec, bitset<bitlen> cx, bitset<bitlen> cy, vector<bitset<bitlen>> h){ //has to be changed for more or less than 2 parents!!!!!!
+    Individual(bitset<bitlen> xVec, bitset<bitlen> phiVec, vector<bitset<bitlen>> cx, vector<bitset<bitlen>> cy, vector<bitset<bitlen>> h){ //has to be changed for more or less than 2 parents!!!!!!
         x=xVec;
         phi=phiVec;
         this->cx=cx;
@@ -521,14 +562,19 @@ class Individual{
                 phi.flip(i);
             }
         }
-        for(int i=0;i<cx.size();++i){
-            if(dis(gen)<=mutation_rate){
-                cx.flip(i);
+        for(int j=0;j<cx.size();++j){
+            for(int i=0;i<cx[j].size();++i){
+                if(dis(gen)<=mutation_rate){
+                    cx[j].flip(i);
+                }
             }
         }
-        for(int i=0;i<cy.size();++i){
-            if(dis(gen)<=mutation_rate){
-                cy.flip(i);
+        
+        for(int j=0;j<cy.size();++j){
+            for(int i=0;i<cy[j].size();++i){
+                if(dis(gen)<=mutation_rate){
+                    cy[j].flip(i);
+                }
             }
         }
 
@@ -608,7 +654,7 @@ public:
 
 
 
-
+        /*
         double cx=getCx();
         double cy=getCy();
         if(cy>cx){
@@ -616,6 +662,7 @@ public:
             this->cx=this->cy;
             this->cy=temp;
         }
+        */
 
         setVecX(x);
         setVecPhi(phi);
@@ -756,13 +803,13 @@ class Generation{
 
 
     
-
+    /*
     void printIndiv(){
         calcGenFitness();
         auto print=[](Individual ind){cout<<"Individual:"<<endl<<"X="<<ind.getX()<<endl<<"Phi="<<ind.getPhi()/PI*180<<endl<<"Cx="<<ind.getCx()<<endl<<"Cy="<<ind.getCy()<<endl<<"Fit="<<ind.getFitness()<<endl<<endl;};
         for_each(indiv.begin(),indiv.end(),print);
     }
-
+*/
     Individual getLastBest(){
         calcGenFitness();
         printBest();
@@ -813,8 +860,16 @@ class Generation{
 
         int cutX=disX(gen);
         int cutPhi=disPhi(gen);
-        int cutCx=disCx(gen);
-        int cutCy=disCx(gen);
+
+        vector<int> cutCx;
+        for(int i=0;i<parents.at(0).getBitCx().size();++i){
+            cutCx.push_back(disCx(gen));
+        }
+
+        vector<int> cutCy;
+        for(int i=0;i<parents.at(0).getBitCy().size();++i){
+            cutCy.push_back(disCx(gen));
+        }
         
         vector<int> cutH;
         for(int i=0;i<parents.at(0).getBitH().size();++i){
@@ -822,15 +877,15 @@ class Generation{
         }
 
         
-        bitset<bitlen> x1(parents.at(0).getVecX().size());
-        bitset<bitlen> phi1(parents.at(0).getVecPhi().size());
-        bitset<bitlen> x2(parents.at(0).getVecX().size());
-        bitset<bitlen> phi2(parents.at(0).getVecPhi().size());
+        bitset<bitlen> x1;
+        bitset<bitlen> phi1;
+        bitset<bitlen> x2;
+        bitset<bitlen> phi2;
         
-        bitset<bitlen> cx1;
-        bitset<bitlen> cx2;
-        bitset<bitlen> cy1;
-        bitset<bitlen> cy2;
+        vector<bitset<bitlen>> cx1;
+        vector<bitset<bitlen>> cx2;
+        vector<bitset<bitlen>> cy1;
+        vector<bitset<bitlen>> cy2;
 
         vector<bitset<bitlen>> h1;
         vector<bitset<bitlen>> h2;
@@ -857,28 +912,42 @@ class Generation{
             phi2[i]=parents[0].getVecPhi()[i];
         }
 
-        for(int i=0;i<cutCx;++i){
-            cx1[i]=parents[0].getBitCx()[i];
-            cx2[i]=parents[1].getBitCx()[i];
+
+        for(int j=0;j<cutCx.size();++j){
+            bitset<bitlen> bit1;
+            bitset<bitlen> bit2;
+
+
+            for(int i=0;i<cutCx[j];++i){
+                bit1[i]=parents[0].getBitCx()[j][i];
+                bit2[i]=parents[1].getBitCx()[j][i];
+            }
+            for(int i=cutCx[j];i<bitlen;++i){
+                bit1[i]=parents[0].getBitCx()[j][i];
+                bit2[i]=parents[1].getBitCx()[j][i];
+            }
+            cx1.push_back(bit1);
+            cx2.push_back(bit2);
         }
-        for(int i=cutCx;i<bitlen;++i){
-            cx2[i]=parents[0].getBitCx()[i];
-            cx1[i]=parents[1].getBitCx()[i];
-        }
-        
-        for(int i=0;i<cutCy;++i){
-            cy1[i]=parents[0].getBitCy()[i];
-            cy2[i]=parents[1].getBitCy()[i];
-        }
-        for(int i=cutCy;i<bitlen;++i){
-            cy2[i]=parents[0].getBitCy()[i];
-            cy1[i]=parents[1].getBitCy()[i];
+        for(int j=0;j<cutCy.size();++j){
+            bitset<bitlen> bit1;
+            bitset<bitlen> bit2;
+            for(int i=0;i<cutCy[j];++i){
+                bit1[i]=parents[0].getBitCy()[j][i];
+                bit2[i]=parents[1].getBitCy()[j][i];
+            }
+            for(int i=cutCy[j];i<bitlen;++i){
+                bit1[i]=parents[0].getBitCy()[j][i];
+                bit2[i]=parents[1].getBitCy()[j][i];
+            }
+            cy1.push_back(bit1);
+            cy2.push_back(bit2);
         }
 
 
 
 
-        for(int i=cutH.size()-1;i>=0;--i){
+        for(int i=0;i<cutH.size();++i){
             bitset<bitlen> bit1;
             bitset<bitlen> bit2;
 
@@ -960,9 +1029,9 @@ class Climber{
 
     public:
 
-    vector<double> hillclimb(double x,double phi, Fitness fit, double cx, double cy, vector<double> h){
+    vector<double> hillclimb(double x,double phi, Fitness fit, vector<double> cx, vector<double> cy, vector<double> h){
         double stepX=0.0001;
-        double stepPhi=0.001;
+        double stepPhi=0.0001;
         
         bool top=0;
         double bestfit=0;
@@ -977,10 +1046,13 @@ class Climber{
             while(fit(x+stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) x+=stepX;
             while(fit(x-stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) x-=stepX;
             
+            /*
             while(fit(x,phi,true,cx+stepX,cy,h)>fit(x,phi,true,cx,cy,h)) cx+=stepX;
             while(fit(x,phi,true,cx-stepX,cy,h)>fit(x,phi,true,cx,cy,h)) cx-=stepX;
             while(fit(x,phi,true,cx,cy+stepX,h)>fit(x,phi,true,cx,cy,h)) cy+=stepX;
             while(fit(x,phi,true,cx,cy-stepX,h)>fit(x,phi,true,cx,cy,h)) cy-=stepX;
+            */
+
 
             while(fit(x,phi+stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
             while(fit(x,phi-stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
@@ -1037,12 +1109,14 @@ class Climber{
             }
 
 
-            if(bestfit-fit(x,phi,true,cx,cy)<0.0001) top=1;
-            bestfit=fit(x,phi,true);
+            if(bestfit-fit(x,phi,true,cx,cy,h)<0.0001) top=1;
+            bestfit=fit(x,phi,true,cx,cy,h);
         }
-        vector<double> ret={x,phi,cx,cy};
-        for(int i=0;i<h.size();i++){
+        vector<double> ret={x,phi};
+        for(int i=0;i<layers-1;i++){
             ret.push_back(h[i]);
+            ret.push_back(cx[i]);
+            ret.push_back(cy[i]);
         }
         return ret;
     }
@@ -1080,8 +1154,8 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
             switch (layers){
                 case 4:{
                     vector<double> uppper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-2));
-                    up1.push_back(uppper_vec[0]);
-                    up2.push_back(uppper_vec[1]);
+                    upp1.push_back(uppper_vec[0]);
+                    upp2.push_back(uppper_vec[1]);
                 }
                 case 3: {
                     vector<double> upper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-1));
@@ -1104,7 +1178,7 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     }
     }
    
-    bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv");
+    bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv",upp1,upp2,"yh");
     string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
     title="d="+to_string(d)+" lambda, with "+to_string(layers)+" layers and density="+to_string(density);
     plt::title(title);
@@ -1135,8 +1209,9 @@ int main(){
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
 
-        for(int i=0;i<500;i++){
+        for(int i=0;i<100;i++){
             gen_i=i+1;
+            cout<<gen_i<<" ";
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
            // cout<<endl<<"Generation "<<i<<endl;
@@ -1155,6 +1230,7 @@ int main(){
                 //plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());
             
         }
+        cout<<endl;
         //gen.printIndiv();
         cout<<endl<<endl<<"Winners of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
@@ -1167,15 +1243,25 @@ int main(){
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy(),best.getH());
         cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl;
         cout<<"H Values:"<<endl;
-        for(int i=4;i<top.size();i++){
+
+        vector<double> hFit;
+        vector<double> cxFit;
+        vector<double> cyFit;
+        for(int i=4;i<layers-1;i+=3){
+            cout<<(i-4)/3<<endl;
             cout<<top[i]<<endl;
+            cout<<top[i+1]<<endl;
+            cout<<top[i+2]<<endl<<endl;
+            hFit.push_back(top[i]);
+            cxFit.push_back(top[i+1]);
+            cyFit.push_back(top[i+2]);
         }
-        cout<<"Fitness="<<fit(top[0],top[1],false,top[2],top[3],best.getH())<<endl;
+        cout<<"Fitness="<<fit(top[0],top[1],false,cxFit,cyFit,hFit)<<endl;
 
         string plotname="crystall";
         plotname+=to_string(j);
         plotname+=".png";
-        plotCell(top[0],top[1],plotname,fit(top[0],top[1]),top[2],top[3]);
+        plotCell(top[0],top[1],plotname,0,top[2],top[3]);
 
         high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
         duration<double> time_parallel = t_end_parallel - t_start_parallel;
