@@ -21,7 +21,7 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.1;
+double d=lambda*0.05;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
@@ -29,7 +29,7 @@ const double density=1;
 
 int const layers=2;
 
-double rcut=lambda*10;
+double rcut=lambda*13;
 //int kmax=15;
 //int lmax=15;
 
@@ -235,8 +235,8 @@ class Fitness{
 
 
 class Individual{
-    vector<bool> x;
-    vector<bool> phi;
+    bitset<bitlen> x;
+    bitset<bitlen> phi;
     bitset<bitlen> cx;
     bitset<bitlen> cy;
     vector<bitset<bitlen>> h;
@@ -245,10 +245,10 @@ class Individual{
 
     public:
 
-    vector<bool> getVecX(){
+    bitset<bitlen> getVecX(){
         return x;
     }
-    vector<bool> getVecPhi(){
+    bitset<bitlen> getVecPhi(){
         return phi;
     }
 
@@ -268,14 +268,15 @@ class Individual{
     void setVecX(double dx){
         dx*=pow(2,x.size());
         long ix=--dx;
-        vector<bool> vecX;
+
+        bitset<bitlen> vecX;
 
         for(int i=0;i<x.size();i++){
             if(ix){
-                vecX.push_back(ix&1);
+                vecX.set(i,ix&1);
                 ix>>=1;
             }
-            else vecX.push_back(0); 
+            else vecX.set(i,0); 
         }
         
         //reverse(vecX.begin(),vecX.end());
@@ -284,17 +285,17 @@ class Individual{
 
     void setVecPhi(double dx){
         dx*=pow(2,phi.size());
-        dx/=PI/2;
+        dx/=(PI/2);
         long ix=--dx;
         
-        vector<bool> vecX;
+        bitset<bitlen> vecX;
 
         for(int i=0;i<phi.size();i++){
             if(ix){
-                vecX.push_back(ix&1);
+                vecX.set(i,ix&1);
                 ix>>=1;
             }
-            else vecX.push_back(0); 
+            else vecX.set(i,0); 
         }
         
         //reverse(vecX.begin(),vecX.end());
@@ -356,18 +357,21 @@ class Individual{
 
 
     double getX(){
-        long accum=accumulate(x.rbegin(),x.rend(),0,[](int i, int j){ return (i<<1)+j;});    //shift the x bits to the left, so that y can be inserted on right site
+        long accum=x.to_ulong();
         accum++;
+
+
         double ret=accum;
         ret/=pow(2,x.size());
         
         return ret;
     }
     double getPhi(){
-        long accum=accumulate(phi.rbegin(),phi.rend(),0,[](int x, int y){ return (x<<1)+y;});
+        long accum=phi.to_ulong();
         accum++;
+
         double ret=accum;
-        ret*=PI/2;
+        ret*=(PI/2);
         ret/=pow(2,phi.size());
         
         return ret;
@@ -458,8 +462,8 @@ class Individual{
         uniform_int_distribution<> dis(0,1);
 
         fitness=1;
-        for(int i=0;i<x_length;i++) x.push_back(dis(gen));
-        for(int i=0;i<phi_length;i++) phi.push_back(dis(gen));
+        for(int i=0;i<x.size();i++) x[i]=dis(gen);
+        for(int i=0;i<phi.size();i++) phi[i]=dis(gen);
         for(int i=0;i<cx.size();i++) cx[i]=dis(gen);
         for(int i=0;i<cy.size();i++) cy[i]=dis(gen);
         for(int i=0;i<layers-1;i++){
@@ -467,9 +471,10 @@ class Individual{
             for(int j=0;j<bit.size()-1;j++) bit[j]=dis(gen);
             h.push_back(bit);
         }
+        correctCell();
     }
     //child Creator
-    Individual(vector<bool> xVec, vector<bool> phiVec, bitset<bitlen> cx, bitset<bitlen> cy, vector<bitset<bitlen>> h){ //has to be changed for more or less than 2 parents!!!!!!
+    Individual(bitset<bitlen> xVec, bitset<bitlen> phiVec, bitset<bitlen> cx, bitset<bitlen> cy, vector<bitset<bitlen>> h){ //has to be changed for more or less than 2 parents!!!!!!
         x=xVec;
         phi=phiVec;
         this->cx=cx;
@@ -482,6 +487,22 @@ class Individual{
     }
     Individual(){
 
+        cout<<"I am called"<<endl;
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<> dis(0,1);
+
+        fitness=1;
+        for(int i=0;i<x.size();i++) x[i]=dis(gen);
+        for(int i=0;i<phi.size();i++) phi[i]=dis(gen);
+        for(int i=0;i<cx.size();i++) cx[i]=dis(gen);
+        for(int i=0;i<cy.size();i++) cy[i]=dis(gen);
+        for(int i=0;i<layers-1;i++){
+            bitset<bitlen> bit;
+            for(int j=0;j<bit.size()-1;j++) bit[j]=dis(gen);
+            h.push_back(bit);
+        }
+        correctCell();
     }
 
     private:
@@ -491,12 +512,12 @@ class Individual{
         uniform_real_distribution<> dis(0,1);
         for(int i=0;i<x.size();++i){
             if(dis(gen)<=mutation_rate){
-                x.at(i)=!x.at(i);
+                x.flip(i);
             }
         }
         for(int i=0;i<phi.size();++i){
             if(dis(gen)<=mutation_rate){
-                phi.at(i)=!phi.at(i);
+                phi.flip(i);
             }
         }
         for(int i=0;i<cx.size();++i){
@@ -520,6 +541,10 @@ class Individual{
 
 
     }
+    public: 
+    bool corrected=false;
+    double lol=90;
+    double tol=2;
 
 public:
     void correctCell(){
@@ -548,10 +573,15 @@ public:
         //cout<<a<<endl;
         x=euclid(x2)/a;
         
-        phi=asin(1./(density*a*a*x));
+        phi=acos(x2[0]/(x*a));
+        //cout<<phi<<endl;
+        /*if(phi<PI/3){
+            cout<<"Strange things are happening"<<endl;
+            cout<<x1[0]<<";"<<x1[1]<<";"<<a<<endl;
+            cout<<x2[0]<<";"<<x2[1]<<";"<<euclid(x2)<<endl<<endl;
+        }*/
 
-
-
+/*
         x1={a,0,0};
         x2={a*x*cos(phi),a*x*sin(phi),0};
         vecX=minimizeCell(x1,x2);
@@ -567,7 +597,7 @@ public:
         //cout<<a<<endl;
         x=euclid(x2)/a; 
         phi=asin(1./(density*a*a*x));
-
+*/
 
 
 
@@ -583,6 +613,10 @@ public:
 
         setVecX(x);
         setVecPhi(phi);
+
+        corrected=true;
+        lol=phi;
+        tol=density*a*a*x;
     }
 
 
@@ -777,10 +811,10 @@ class Generation{
         }
 
         
-        vector<bool> x1(parents.at(0).getVecX().size());
-        vector<bool>phi1(parents.at(0).getVecPhi().size());
-        vector<bool>x2(parents.at(0).getVecX().size());
-        vector<bool>phi2(parents.at(0).getVecPhi().size());
+        bitset<bitlen> x1(parents.at(0).getVecX().size());
+        bitset<bitlen> phi1(parents.at(0).getVecPhi().size());
+        bitset<bitlen> x2(parents.at(0).getVecX().size());
+        bitset<bitlen> phi2(parents.at(0).getVecPhi().size());
         
         bitset<bitlen> cx1;
         bitset<bitlen> cx2;
@@ -794,22 +828,22 @@ class Generation{
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
         *///cout<<"Genes will be created!"<<endl;
         for(int i=0;i<cutX;++i){
-            x1[i]=parents[0].getVecX().at(i);
-            x2[i]=parents[1].getVecX().at(i);
+            x1[i]=parents[0].getVecX()[i];
+            x2[i]=parents[1].getVecX()[i];
         }
         //cout<<"Secon Gene now edited"<<endl;
         for(int i=cutX;i<parents.at(0).getVecX().size();++i){
-            x1[i]=parents[1].getVecX().at(i);
-            x2[i]=parents[0].getVecX().at(i);
+            x1[i]=parents[1].getVecX()[i];
+            x2[i]=parents[0].getVecX()[i];
         }
 
         for(int i=0;i<cutPhi;++i){
-            phi1[i]=parents[0].getVecPhi().at(i);
-            phi2[i]=parents[1].getVecPhi().at(i);
+            phi1[i]=parents[0].getVecPhi()[i];
+            phi2[i]=parents[1].getVecPhi()[i];
         }
         for(int i=cutPhi;i<parents.at(0).getVecPhi().size();++i){
-            phi1[i]=parents[1].getVecPhi().at(i);
-            phi2[i]=parents[0].getVecPhi().at(i);
+            phi1[i]=parents[1].getVecPhi()[i];
+            phi2[i]=parents[0].getVecPhi()[i];
         }
 
         for(int i=0;i<cutCx;++i){
@@ -1026,7 +1060,7 @@ int main(){
     for(int j=1;j<=10;j++){
         /*d=0.1*j*lambda;
         tric.setH();*/
-        for(int i=0;i<200;i++){
+        for(int i=0;i<100;i++){
             gen_i=i+1;
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
@@ -1049,13 +1083,9 @@ int main(){
         //gen.printIndiv();
         cout<<endl<<endl<<"Winners of the Evolution Contest "<<j<<" :"<<endl;
         Individual best=gen.getLastBest();
-        for(int o=0;o<best.getVecPhi().size();o++){
-            cout<<best.getVecPhi()[o];
-        }
-        cout<<endl;
-        for(int o=0;o<best.getVecX().size();o++){
-            cout<<best.getVecX()[o];
-        }
+        //best.correctCell();
+        cout<<best.lol<<" "<<best.tol<<endl;
+        //best.printStats();
         //cout<<endl<<endl<<"ALL THE INDIVS"<<endl;
         //gen.printIndiv();
         Climber climb;
@@ -1071,10 +1101,9 @@ int main(){
     vector<bool> x={0,1,1,0,1,1,1,0};
     vector<bool> phi={0,0,0,0,0,0,0};
     Individual a(8,6);
-    Individual b(x,phi,a.getBitCx(),a.getBitCy(),a.getBitH());
-    b.printStats();
-    b.correctCell();
-    b.printStats();*/
+    a.setVecPhi(PI/3);
+    a.correctCell();
+    cout<<a.getPhi()<<endl;*/
     
     
     cout<<"FINISHED! \nEnter anything to close"<<endl;
