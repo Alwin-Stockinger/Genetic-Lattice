@@ -21,7 +21,7 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.7;
+double d=lambda*0.1;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
@@ -52,10 +52,17 @@ struct Tric{
     vector<double> hTric;
 
     Tric(){
+        setH();
+    }
+
+    void setH(){
+        hTric.erase(hTric.begin(),hTric.end());
         for(int i=0;i<layers-1;i++){
             hTric.push_back(d/(layers-1.));
         }
     }
+
+
 
 } tric;
 
@@ -933,7 +940,7 @@ class Climber{
             while(fit(x,phi+stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
             while(fit(x,phi-stepPhi,true,cx,cy)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
 
-            if(bestfit-fit(x,phi,true,cx,cy)<0.0000001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy)<0.00000001) top=1;
             bestfit=fit(x,phi,true);
         }
 
@@ -1017,7 +1024,8 @@ int main(){
   
    
     for(int j=1;j<=10;j++){
-        d=0.1*j*lambda;
+        /*d=0.1*j*lambda;
+        tric.setH();*/
         for(int i=0;i<200;i++){
             gen_i=i+1;
             //d=j*0.1;
