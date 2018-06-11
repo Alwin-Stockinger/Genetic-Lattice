@@ -25,11 +25,11 @@ double d=lambda*0.5;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=0.3;
+const double density=0.1;
 
-int const layers=2;
+int const layers=4;
 
-double rcut=lambda*20;
+double rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
@@ -67,16 +67,16 @@ struct Tric{
     void setCx(){
         cx.erase(cx.begin(),cx.end());
         for(int i=0;i<layers-1;i++){
-            if(i%2) cx.push_back(a/2.);
-            else cx.push_back(a/-2.);
+            if(i%2) cx.push_back(a/(2.*density));
+            else cx.push_back(a/(-2.*density));
         }
     }
 
     void setCy(){
         cy.erase(cy.begin(),cy.end());
         for(int i=0;i<layers-1;i++){
-            if(i%2) cy.push_back(a*x*sin(phi)/2.);
-            else cy.push_back(-a*x*sin(phi)/2.);
+            if(i%2) cy.push_back(a*x*sin(phi)/(2.*density));
+            else cy.push_back(-a*x*sin(phi)/(2.*density));
         }
     }
 
@@ -1024,7 +1024,7 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, vector<double> cx, vector<double> cy, vector<double> h){
-        double stepX=0.00001;
+        double stepX=0.0001;
         double stepPhi=0.0001;
         
         bool top=0;
@@ -1149,7 +1149,7 @@ class Climber{
             }
 
 
-            if(bestfit-fit(x,phi,true,cx,cy,h)<0.0000001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy,h)<0.00001) top=1;
             bestfit=fit(x,phi,true,cx,cy,h);
         }
         vector<double> ret={x,phi};
