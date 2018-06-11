@@ -21,15 +21,15 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.5;
+double d=lambda*5;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=2;
+const double density=1;
 
-int const layers=2;
+int const layers=3;
 
-double rcut=lambda*15;
+double rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
@@ -363,7 +363,7 @@ class Individual{
     void setBitH(vector<double> dhVec){
         for(int i=0;i<dhVec.size();i++){
             dhVec[i]*=pow(2,h[i].size());
-            long iH=--dhVec[i];
+            long iH=dhVec[i];
 
             bitset<bitlen> bitH;
 
@@ -448,7 +448,7 @@ class Individual{
 
         for(int i=0;i<h.size();i++){
             long accum=h[i].to_ulong();
-            accum++;
+            accum;
 
             double element=accum;
             element/=pow(2,h[i].size());
@@ -1024,7 +1024,7 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, vector<double> cx, vector<double> cy, vector<double> h){
-        double stepX=0.0001;
+        double stepX=0.001;
         double stepPhi=0.0001;
         
         bool top=0;
@@ -1033,7 +1033,7 @@ class Climber{
         while(!top){
 
             
-
+            
 
 
 
@@ -1051,33 +1051,58 @@ class Climber{
             while(fit(x,phi+stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)&&phi+stepPhi<=PI/2) phi+=stepPhi;
             while(fit(x,phi-stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)&&phi-stepPhi>0) phi-=stepPhi;
 
+            double x1=1./sqrt(x*sin(phi)*density);
+            double x2=x1*x*sin(phi);
+
+
             for(int i=0;i<cx.size();i++){
                 vector<double> cxPlus=cx;
                 cxPlus[i]+=stepX;
-                while(fit(x,phi,true,cxPlus,cy,h)>fit(x,phi,true,cx,cy,h)&&cxPlus[i]<=1){
+
+                double adder=0; //for cx addition of other layers
+                for(double x:cxPlus) adder+=x;
+                while(fit(x,phi,true,cxPlus,cy,h)>fit(x,phi,true,cx,cy,h)&&(adder<=x1)&&cxPlus[0]<x1){
                     cxPlus[i]+=stepX;
                     cx[i]+=stepX;
+                    
+                    adder=0;
+                    for(double x:cxPlus) adder+=x;
                 }
 
                 vector<double> cxMinus=cx;
+                
+                adder=0;
+                for(double x:cxMinus) adder+=x;
                 cxMinus[i]-=stepX;
-                while(fit(x,phi,true,cxMinus,cy,h)>fit(x,phi,true,cx,cy,h)&&cxMinus[i]>=0){
+                while(fit(x,phi,true,cxMinus,cy,h)>fit(x,phi,true,cx,cy,h)&&adder>=0&&cxMinus[0]>0){
                     cxMinus[i]-=stepX;
                     cx[i]-=stepX;
+                    adder=0;
+                    for(double x:cxMinus) adder+=x;
                 }
 
+                
                 vector<double> cyPlus=cy;
+                adder=0;
+                for(double x:cyPlus) adder+=x;
                 cyPlus[i]+=stepX;
-                while(fit(x,phi,true,cx,cyPlus,h)>fit(x,phi,true,cx,cy,h)&&cyPlus[i]<=1){
+                while(fit(x,phi,true,cx,cyPlus,h)>fit(x,phi,true,cx,cy,h)&&adder<=x2&&cxPlus[0]<x2){
                     cyPlus[i]+=stepX;
                     cy[i]+=stepX;
+                    adder=0;
+                    for(double x:cyPlus) adder+=x;
                 }
 
+                
                 vector<double> cyMinus=cy;
+                adder=0;
+                for(double x:cyMinus) adder+=x;
                 cyMinus[i]-=stepX;
-                while(fit(x,phi,true,cx,cyMinus,h)>fit(x,phi,true,cx,cy,h)&&cyMinus[i]>=0){
+                while(fit(x,phi,true,cx,cyMinus,h)>fit(x,phi,true,cx,cy,h)&&adder>=0&&cyMinus[0]>0){
                     cyMinus[i]-=stepX;
                     cy[i]-=stepX;
+                    adder=0;
+                    for(double x:cyMinus) adder+=x;
                 }
 
 
@@ -1089,7 +1114,6 @@ class Climber{
                 hplus[i]+=stepX;
 
                 double sum=0;
-                double sumH=0;
                 for(int i=0;i<h.size();i++){
                     sum+=hplus[i];
                 }
@@ -1097,23 +1121,20 @@ class Climber{
                     hplus[i]/=sum/d;
                 }
                 sum=0;
-                sumH=0;
 
                 
                 while(fit(x,phi,true,cx,cy,hplus)>fit(x,phi,true,cx,cy,h)){
-                    h[i]+=stepX;
+                    h=hplus;
                     hplus[i]+=stepX;
 
                     for(int i=0;i<h.size();i++){
-                        sumH+=h[i];
                         sum+=hplus[i];
                     }
                     for(int i=0;i<h.size();i++){
                         hplus[i]/=sum/d;
-                        h[i]/=sumH/d;
                     }
                     sum=0;
-                    sumH=0;
+
                 } 
 
                 vector<double> hminus=h;
@@ -1126,22 +1147,19 @@ class Climber{
                     hminus[i]/=sum/d;
                 }
                 sum=0;
-                sumH=0;
 
-                while(fit(x,phi,true,cx,cy,hminus)>fit(x,phi,true,cx,cy,h)){
-                    h[i]-=stepX;
+
+                while(fit(x,phi,true,cx,cy,hminus)>fit(x,phi,true,cx,cy,h)&&hminus[i]>=0){
+                    h=hminus;
                     hminus[i]-=stepX;
 
                     for(int i=0;i<h.size();i++){
                         sum+=hminus[i];
-                        sumH+=h[i];
                     }
                     for(int i=0;i<h.size();i++){
                         hminus[i]/=sum/d;
-                        h[i]/=sumH/d;
                     }
                     sum=0;
-                    sumH=0;
 
                 } 
 
@@ -1149,7 +1167,7 @@ class Climber{
             }
 
 
-            if(bestfit-fit(x,phi,true,cx,cy,h)<0.00001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy,h)<0.0001) top=1;
             bestfit=fit(x,phi,true,cx,cy,h);
         }
         vector<double> ret={x,phi};
@@ -1279,7 +1297,7 @@ int main(){
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
 
-        int imax=100;
+        int imax=70;
 
         for(int i=0;i<imax;i++){
             gen_i=i+1;
