@@ -21,7 +21,7 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*1;
+double d=lambda*0.1;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
@@ -626,43 +626,22 @@ public:
             x=euclid(x2)/a;
             phi=acos((x1[0]*x2[0]+x1[1]*x2[1])/(euclid(x1)*euclid(x2)));
         } 
-        //cout<<phi<<endl;
-        /*if(phi<PI/3){
-            cout<<"Strange things are happening"<<endl;
-            cout<<x1[0]<<";"<<x1[1]<<";"<<a<<endl;
-            cout<<x2[0]<<";"<<x2[1]<<";"<<euclid(x2)<<endl<<endl;
-        }*/
 
-/*
-        x1={a,0,0};
-        x2={a*x*cos(phi),a*x*sin(phi),0};
-        vecX=minimizeCell(x1,x2);
-        x1=vecX[0];
-        x2=vecX[1];
-        if(euclid(x1)<euclid(x2)){
-            //cout<<phi/PI*180<<endl;
-            vector<double> temp=x1;
-            x1=x2;
-            x2=temp;
+        vector<double> cx=getCx();
+        vector<double> cy=getCy();
+
+        for(int i=0;i<cx.size();i++){
+            if(cx[i]>a) cx[i]-=a;
+            if(cy[i]>a) cy[i]-=a;
+            if(cx[i]<cy[i]){
+                double temp=cx[i];
+                cx[i]=cy[i];
+                cy[i]=temp;
+            }
         }
-        a=euclid(x1);
-        //cout<<a<<endl;
-        x=euclid(x2)/a; 
-        phi=asin(1./(density*a*a*x));
-*/
-
-
-
-
-        /*
-        double cx=getCx();
-        double cy=getCy();
-        if(cy>cx){
-            bitset<bitlen> temp=this->cx;
-            this->cx=this->cy;
-            this->cy=temp;
-        }
-        */
+        
+        setBitCx(cx);
+        setBitCy(cy);
 
         setVecX(x);
         setVecPhi(phi);
@@ -1043,8 +1022,8 @@ class Climber{
 
 
 
-            while(fit(x+stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) x+=stepX;
-            while(fit(x-stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) x-=stepX;
+            while(fit(x+stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)&&x+stepX<=1) x+=stepX;
+            while(fit(x-stepX,phi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)&&x-stepX>=0) x-=stepX;
             
             /*
             while(fit(x,phi,true,cx+stepX,cy,h)>fit(x,phi,true,cx,cy,h)) cx+=stepX;
@@ -1057,17 +1036,53 @@ class Climber{
             while(fit(x,phi+stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
             while(fit(x,phi-stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
 
+            for(int i=0;i<cx.size();i++){
+                vector<double> cxPlus=cx;
+                cxPlus[i]+=stepX;
+                while(fit(x,phi,true,cxPlus,cy,h)>fit(x,phi,true,cx,cy,h)&&cxPlus[i]<=1){
+                    cxPlus[i]+=stepX;
+                    cx[i]+=stepX;
+                }
+
+                vector<double> cxMinus=cx;
+                cxMinus[i]-=stepX;
+                while(fit(x,phi,true,cxMinus,cy,h)>fit(x,phi,true,cx,cy,h)&&cxMinus[i]>=0){
+                    cxMinus[i]-=stepX;
+                    cx[i]-=stepX;
+                }
+
+                vector<double> cyPlus=cy;
+                cyPlus[i]+=stepX;
+                while(fit(x,phi,true,cx,cyPlus,h)>fit(x,phi,true,cx,cy,h)&&cyPlus[i]<=1){
+                    cyPlus[i]+=stepX;
+                    cy[i]+=stepX;
+                }
+
+                vector<double> cyMinus=cy;
+                cyMinus[i]+=stepX;
+                while(fit(x,phi,true,cx,cyMinus,h)>fit(x,phi,true,cx,cy,h)&&cyMinus[i]>=0){
+                    cyMinus[i]-=stepX;
+                    cy[i]-=stepX;
+                }
+
+
+            }
+
+
             for(int i=0;i<h.size();i++){
                 vector<double> hplus=h;
                 hplus[i]+=stepX;
 
                 double sum=0;
+                double sumH=0;
                 for(int i=0;i<h.size();i++){
                     sum+=hplus[i];
                 }
                 for(int i=0;i<h.size();i++){
                     hplus[i]/=sum/d;
                 }
+                sum=0;
+                sumH=0;
 
                 
                 while(fit(x,phi,true,cx,cy,hplus)>fit(x,phi,true,cx,cy,h)){
@@ -1075,11 +1090,15 @@ class Climber{
                     hplus[i]+=stepX;
 
                     for(int i=0;i<h.size();i++){
+                        sumH+=h[i];
                         sum+=hplus[i];
                     }
                     for(int i=0;i<h.size();i++){
                         hplus[i]/=sum/d;
+                        h[i]/=sumH/d;
                     }
+                    sum=0;
+                    sumH=0;
                 } 
 
                 vector<double> hminus=h;
@@ -1091,6 +1110,8 @@ class Climber{
                 for(int i=0;i<h.size();i++){
                     hminus[i]/=sum/d;
                 }
+                sum=0;
+                sumH=0;
 
                 while(fit(x,phi,true,cx,cy,hminus)>fit(x,phi,true,cx,cy,h)){
                     h[i]-=stepX;
@@ -1098,10 +1119,14 @@ class Climber{
 
                     for(int i=0;i<h.size();i++){
                         sum+=hminus[i];
+                        sumH+=h[i];
                     }
                     for(int i=0;i<h.size();i++){
                         hminus[i]/=sum/d;
+                        h[i]/=sumH/d;
                     }
+                    sum=0;
+                    sumH=0;
 
                 } 
 
@@ -1109,7 +1134,7 @@ class Climber{
             }
 
 
-            if(bestfit-fit(x,phi,true,cx,cy,h)<0.0001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy,h)<0.00001) top=1;
             bestfit=fit(x,phi,true,cx,cy,h);
         }
         vector<double> ret={x,phi};
@@ -1127,11 +1152,21 @@ class Climber{
 
 namespace plt=matplotlibcpp;
 
-void plotCell(double x, double phi,string plotname="crystall.png",double fitness=0, double cx=0, double cy=0){
+void plotCell(vector<double> top,string plotname="crystall.png"){
+    double x=top[0];
+    double phi=top[1];
+    top.erase(top.begin(),top.begin()+2);
+
+
     double a=1./sqrt(x*sin(phi)*density);
     vector<double> x1={a,0,0};
     vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
-    vector<double> c={cx,cy};
+    
+    vector<vector<double>> c;
+
+    for(int i=0;i<top.size();i+=3){
+        c.push_back({top[i+1],top[i+2],top[i]});
+    }
 
     vector<double> p1,p2;
     vector<double> u1,u2;
@@ -1139,10 +1174,8 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     vector<double> upp1,upp2;
 
     
-    int lmax=2;
-    lmax++;
-    int kmax=2;
-    kmax++;
+    int lmax=3;
+    int kmax=3;
 
 
     plt::clf();
@@ -1151,26 +1184,47 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     for(int k=-kmax;k<=kmax;++k){
         for(int l=-lmax;l<=lmax;++l){
 
+            int summer=layers-1;
+
             switch (layers){
                 case 4:{
-                    vector<double> uppper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-2));
+                    vector<double> sumC=c[0];
+                    for(int i=1;i<summer;i++) sumC=sumvec(sumC,c[i]);
+
+                    vector<double> uppper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
                     upp1.push_back(uppper_vec[0]);
                     upp2.push_back(uppper_vec[1]);
+
+                    summer--;
                 }
                 case 3: {
-                    vector<double> upper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),scalevec(c,-1));
+                    vector<double> sumC=c[0];
+                    for(int i=1;i<summer;i++) sumC=sumvec(sumC,c[i]);
+
+                    vector<double> upper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
                     up1.push_back(upper_vec[0]);
                     up2.push_back(upper_vec[1]);
+
+                    summer--;
                 }
                 case 2: {
-                    vector<double> under_vec=sumvec(scalevec(x1,k),scalevec(x2,l),c);
+                    vector<double> sumC=c[0];
+
+
+                    vector<double> under_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
                     u1.push_back(under_vec[0]);
                     u2.push_back(under_vec[1]);
+
+
                 }
                 case 1: {
+
+
                     vector<double> vec=sumvec(scalevec(x1,k),scalevec(x2,l));
                     p1.push_back(vec[0]);
                     p2.push_back(vec[1]);
+
+
                 }
                 default: break;
             }
@@ -1179,8 +1233,8 @@ void plotCell(double x, double phi,string plotname="crystall.png",double fitness
     }
    
     bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv",upp1,upp2,"yh");
-    string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
-    title="d="+to_string(d)+" lambda, with "+to_string(layers)+" layers and density="+to_string(density);
+    //string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
+    string title="d="+to_string(d)+" lambda, with "+to_string(layers)+" layers and density="+to_string(density);
     plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
@@ -1209,10 +1263,9 @@ int main(){
         tric.setH();*/
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
-        cout<<"hi";
         for(int i=0;i<100;i++){
             gen_i=i+1;
-            cout<<gen_i<<" ";
+            //cout<<gen_i<<" ";
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
            // cout<<endl<<"Generation "<<i<<endl;
@@ -1242,14 +1295,14 @@ int main(){
         //gen.printIndiv();
         Climber climb;
         vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy(),best.getH());
-        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl<<"cX="<<top[2]<<endl<<"cY="<<top[3]<<endl;
-        cout<<"H Values:"<<endl;
+        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl;
+        cout<<"H Values(h,cx,cy):"<<endl;
 
         vector<double> hFit;
         vector<double> cxFit;
         vector<double> cyFit;
-        for(int i=4;i<layers-1;i+=3){
-            cout<<(i-4)/3<<endl;
+        for(int i=2;i<top.size();i+=3){
+            cout<<(i-2)/3<<":"<<endl;
             cout<<top[i]<<endl;
             cout<<top[i+1]<<endl;
             cout<<top[i+2]<<endl<<endl;
@@ -1262,7 +1315,7 @@ int main(){
         string plotname="crystall";
         plotname+=to_string(j);
         plotname+=".png";
-        plotCell(top[0],top[1],plotname,0,top[2],top[3]);
+        plotCell(top,plotname);
 
         high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
         duration<double> time_parallel = t_end_parallel - t_start_parallel;
