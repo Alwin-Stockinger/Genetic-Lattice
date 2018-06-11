@@ -25,11 +25,11 @@ double d=lambda*0.5;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=0.05;
+const double density=2;
 
 int const layers=2;
 
-double rcut=lambda*30;
+double rcut=lambda*15;
 //int kmax=15;
 //int lmax=15;
 
@@ -434,7 +434,7 @@ class Individual{
 
             double dret=accum;
             dret/=pow(2,cy[i].size());
-            dret*=getA();
+            dret*=getA()*getX()*sin(getPhi());
             if(i>0) dret-=ret[i-1];     //sets shift to 0
             ret.push_back(dret);
         }
