@@ -21,15 +21,15 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*3;
+double d=lambda*0.5;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=0.1;
+const double density=0.3;
 
 int const layers=2;
 
-double rcut=lambda*30;
+double rcut=lambda*20;
 //int kmax=15;
 //int lmax=15;
 
@@ -401,6 +401,10 @@ class Individual{
         return ret;
     }
 
+    double getA(){
+        return 1./sqrt(getX()*sin(getPhi())*density);
+    }
+
 
     //not sure if right
     vector<double> getCx(){
@@ -412,6 +416,8 @@ class Individual{
             
             double dret=accum;
             dret/=pow(2,cx[i].size());
+
+            dret/=density;
             if(i>0) dret-=ret[i-1];
             ret.push_back(dret);
         }
@@ -428,6 +434,7 @@ class Individual{
 
             double dret=accum;
             dret/=pow(2,cy[i].size());
+            dret/=density;
             if(i>0) dret-=ret[i-1];     //sets shift to 0
             ret.push_back(dret);
         }
