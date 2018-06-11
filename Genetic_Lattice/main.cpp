@@ -21,7 +21,7 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.1;
+double d=lambda*0.5;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
@@ -29,7 +29,7 @@ const double density=1;
 
 int const layers=2;
 
-double rcut=lambda*10;
+double rcut=lambda*12;
 //int kmax=15;
 //int lmax=15;
 
@@ -325,7 +325,7 @@ class Individual{
         for(int i=0;i<dxVec.size();i++){
             double dx=dxVec[i];
             dx*=pow(2,cx[i].size());
-            long ix=--dx;
+            long ix=dx;
 
             bitset<bitlen> bitCx;
 
@@ -343,12 +343,12 @@ class Individual{
     void setBitCy(vector<double> dxVec){
         for(int i=0;i<dxVec.size();++i){
             double dx=dxVec[i];
-            dx*=pow(2,cy.size());
-            long ix=--dx;
+            dx*=pow(2,cy[i].size());
+            long ix=dx;
 
             bitset<bitlen> bitCy;
 
-            for(int i=0;i<cy.size();++i){
+            for(int i=0;i<cy[i].size();++i){
                 if(ix){
                     bitCy.set(i,ix&1);
                     ix>>=1;
@@ -407,7 +407,7 @@ class Individual{
         vector<double> ret;
         for(int i=0;i<cx.size();i++){
             long accum=cx[i].to_ulong();
-            accum++;
+            accum;
 
             
             double dret=accum;
@@ -422,7 +422,7 @@ class Individual{
 
         for(int i=0;i<cy.size();i++){
             long accum=cy[i].to_ulong();
-            accum++;
+            accum;
         
 
             double dret=accum;
@@ -631,8 +631,8 @@ public:
         vector<double> cy=getCy();
 
         for(int i=0;i<cx.size();i++){
-            if(cx[i]>a) cx[i]-=a;
-            if(cy[i]>a) cy[i]-=a;
+            /*if(cx[i]>a) cx[i]-=a;
+            if(cy[i]>a) cy[i]-=a;*/
             if(cx[i]<cy[i]){
                 double temp=cx[i];
                 cx[i]=cy[i];
@@ -1134,7 +1134,7 @@ class Climber{
             }
 
 
-            if(bestfit-fit(x,phi,true,cx,cy,h)<0.00001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy,h)<0.000001) top=1;
             bestfit=fit(x,phi,true,cx,cy,h);
         }
         vector<double> ret={x,phi};
@@ -1263,12 +1263,15 @@ int main(){
         tric.setH();*/
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
-        for(int i=0;i<100;i++){
+
+        int imax=150;
+
+        for(int i=0;i<imax;i++){
             gen_i=i+1;
             //cout<<gen_i<<" ";
             //d=j*0.1;
                 //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
-           // cout<<endl<<"Generation "<<i<<endl;
+            cout<<endl<<"Generation "<<i<<" of "<<imax<<endl;
             gen.nextGen(ind_size);
                 //high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
                 //duration<double> time_parallel = t_end_parallel - t_start_parallel;
