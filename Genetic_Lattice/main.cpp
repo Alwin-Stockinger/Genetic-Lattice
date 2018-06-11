@@ -21,15 +21,15 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*0.5;
+double d=lambda*3;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=0.5;
+const double density=0.1;
 
 int const layers=2;
 
-double rcut=lambda*12;
+double rcut=lambda*30;
 //int kmax=15;
 //int lmax=15;
 
@@ -1041,8 +1041,8 @@ class Climber{
             */
 
 
-            while(fit(x,phi+stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi+=stepPhi;
-            while(fit(x,phi-stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)) phi-=stepPhi;
+            while(fit(x,phi+stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)&&phi+stepPhi<=PI/2) phi+=stepPhi;
+            while(fit(x,phi-stepPhi,true,cx,cy,h)>fit(x,phi,true,cx,cy,h)&&phi-stepPhi>0) phi-=stepPhi;
 
             for(int i=0;i<cx.size();i++){
                 vector<double> cxPlus=cx;
