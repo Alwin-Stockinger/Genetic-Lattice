@@ -25,7 +25,7 @@ double d=lambda*0.5;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=1;
+const double density=0.5;
 
 int const layers=2;
 
@@ -412,6 +412,7 @@ class Individual{
             
             double dret=accum;
             dret/=pow(2,cx[i].size());
+            if(i>0) dret-=ret[i-1];
             ret.push_back(dret);
         }
         return ret;
@@ -427,6 +428,7 @@ class Individual{
 
             double dret=accum;
             dret/=pow(2,cy[i].size());
+            if(i>0) dret-=ret[i-1];     //sets shift to 0
             ret.push_back(dret);
         }
         return ret;
@@ -634,14 +636,20 @@ public:
             /*if(cx[i]>a) cx[i]-=a;
             if(cy[i]>a) cy[i]-=a;*/
             if(cx[i]<cy[i]){
-                double temp=cx[i];
-                cx[i]=cy[i];
-                cy[i]=temp;
+                bitset<bitlen> temp=(this->cx)[i];
+                (this->cx)[i]=(this->cy)[i];
+                (this->cy)[i]=temp;
             }
         }
         
-        setBitCx(cx);
-        setBitCy(cy);
+        vector<double> h=getH();
+
+        if(h[0]<h[h.size()-1]){
+            reverse((this->h).begin(),(this->h).end());
+            reverse((this->cx).begin(),(this->cx).end());
+            reverse((this->cy).begin(),(this->cy).end());
+        }
+
 
         setVecX(x);
         setVecPhi(phi);
@@ -1059,7 +1067,7 @@ class Climber{
                 }
 
                 vector<double> cyMinus=cy;
-                cyMinus[i]+=stepX;
+                cyMinus[i]-=stepX;
                 while(fit(x,phi,true,cx,cyMinus,h)>fit(x,phi,true,cx,cy,h)&&cyMinus[i]>=0){
                     cyMinus[i]-=stepX;
                     cy[i]-=stepX;
