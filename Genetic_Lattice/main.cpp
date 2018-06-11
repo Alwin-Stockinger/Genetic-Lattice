@@ -25,11 +25,11 @@ double d=lambda*0.5;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=0.1;
+const double density=0.05;
 
-int const layers=4;
+int const layers=2;
 
-double rcut=lambda*10;
+double rcut=lambda*30;
 //int kmax=15;
 //int lmax=15;
 
@@ -67,16 +67,16 @@ struct Tric{
     void setCx(){
         cx.erase(cx.begin(),cx.end());
         for(int i=0;i<layers-1;i++){
-            if(i%2) cx.push_back(a/(2.*density));
-            else cx.push_back(a/(-2.*density));
+            if(i%2) cx.push_back(a/(2.));
+            else cx.push_back(a/(-2.));
         }
     }
 
     void setCy(){
         cy.erase(cy.begin(),cy.end());
         for(int i=0;i<layers-1;i++){
-            if(i%2) cy.push_back(a*x*sin(phi)/(2.*density));
-            else cy.push_back(-a*x*sin(phi)/(2.*density));
+            if(i%2) cy.push_back(a*x*sin(phi)/(2.));
+            else cy.push_back(-a*x*sin(phi)/(2.));
         }
     }
 
@@ -417,7 +417,7 @@ class Individual{
             double dret=accum;
             dret/=pow(2,cx[i].size());
 
-            dret/=density;
+            dret*=getA();
             if(i>0) dret-=ret[i-1];
             ret.push_back(dret);
         }
@@ -434,7 +434,7 @@ class Individual{
 
             double dret=accum;
             dret/=pow(2,cy[i].size());
-            dret/=density;
+            dret*=getA();
             if(i>0) dret-=ret[i-1];     //sets shift to 0
             ret.push_back(dret);
         }
