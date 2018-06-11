@@ -395,9 +395,9 @@ class Individual{
         accum++;
 
         double ret=accum;
-        ret*=(PI/2);
         ret/=pow(2,phi.size());
-        
+        ret*=(PI/2);
+
         return ret;
     }
 
@@ -1009,7 +1009,7 @@ class Climber{
     public:
 
     vector<double> hillclimb(double x,double phi, Fitness fit, vector<double> cx, vector<double> cy, vector<double> h){
-        double stepX=0.0001;
+        double stepX=0.00001;
         double stepPhi=0.0001;
         
         bool top=0;
@@ -1134,7 +1134,7 @@ class Climber{
             }
 
 
-            if(bestfit-fit(x,phi,true,cx,cy,h)<0.000001) top=1;
+            if(bestfit-fit(x,phi,true,cx,cy,h)<0.0000001) top=1;
             bestfit=fit(x,phi,true,cx,cy,h);
         }
         vector<double> ret={x,phi};
@@ -1250,7 +1250,7 @@ void plotCell(vector<double> top,string plotname="crystall.png"){
 
 
 int main(){
-    int ind_size=1000;
+    int ind_size=2000;
 
     Fitness fit;
 
@@ -1264,7 +1264,7 @@ int main(){
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
 
-        int imax=150;
+        int imax=100;
 
         for(int i=0;i<imax;i++){
             gen_i=i+1;
