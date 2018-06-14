@@ -21,13 +21,17 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*5;
+double d=lambda*10;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
-const double density=1;
+
 
 int const layers=3;
+const double volDensity=1;      
+const double density=volDensity/layers;  //density in Layer
+
+
 
 double rcut=lambda*10;
 //int kmax=15;
@@ -226,6 +230,17 @@ class LatticeSum{
     }
 };
 
+class Energy{
+
+    LatticeSum latticeSum;
+    Potential potential;
+    public:
+    double operator() (double x,double phi,vector<double> cx,vector<double> cy,vector<double> h=veczero){
+        double sum=latticeSum(x,phi,potential,false,cx,cy,h);
+        return sum/layers;
+    }
+
+};
 
 class Fitness{
 
@@ -1185,7 +1200,7 @@ class Climber{
 
 namespace plt=matplotlibcpp;
 
-void plotCell(vector<double> top,string plotname="crystall.png"){
+void plotCell(vector<double> top,string plotname="crystall.png",double energy=0){
     double x=top[0];
     double phi=top[1];
     top.erase(top.begin(),top.begin()+2);
@@ -1267,7 +1282,7 @@ void plotCell(vector<double> top,string plotname="crystall.png"){
    
     bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv",upp1,upp2,"yh");
     //string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
-    string title="d="+to_string(d)+" lambda, with "+to_string(layers)+" layers and density="+to_string(density);
+    string title="d="+to_string(d)+", l="+to_string(layers)+", vD="+to_string(volDensity)+", lD="+to_string(density)+", energy="+to_string(energy);
     plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
@@ -1297,7 +1312,7 @@ int main(){
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
 
-        int imax=70;
+        int imax=100;
 
         for(int i=0;i<imax;i++){
             gen_i=i+1;
@@ -1347,11 +1362,13 @@ int main(){
             cyFit.push_back(top[i+2]);
         }
         cout<<"Fitness="<<fit(top[0],top[1],false,cxFit,cyFit,hFit)<<endl;
-
+        Energy energy;
+        double energy_value=energy(top[0],top[1],cxFit,cyFit,hFit);
+        cout<<"Energy="<<energy_value<<endl;
         string plotname="crystall";
         plotname+=to_string(j);
         plotname+=".png";
-        plotCell(top,plotname);
+        plotCell(top,plotname,energy_value);
 
         high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
         duration<double> time_parallel = t_end_parallel - t_start_parallel;
