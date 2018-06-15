@@ -256,6 +256,10 @@ class Fitness{
             tric_sum=latticeSum(tric.x,tric.phi,potential,false,tric.cx,tric.cy,tric.hTric);
         }
         
+        void calcTric(){
+            tric_sum=latticeSum(tric.x,tric.phi,potential,false,tric.cx,tric.cy,tric.hTric);
+        }
+        
         double operator() (double x,double phi,bool min,vector<double> cx,vector<double> cy,vector<double> h=veczero) const{
             //if(phi<PI/6) return 0;  //deletes non sensical solutions
             double sum=latticeSum(x,phi,potential,min,cx,cy,h);
@@ -1221,10 +1225,10 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
         c.push_back({top[i+1],top[i+2],top[i]});
     }
 
-    vector<double> p1,p2;
-    vector<double> u1,u2;
-    vector<double> up1,up2;
-    vector<double> upp1,upp2;
+    vector<double> p1,p2,p3;
+    vector<double> u1,u2,u3;
+    vector<double> up1,up2,up3;
+    vector<double> upp1,upp2,upp3;
 
     
     int lmax=3;
@@ -1247,6 +1251,7 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
                     vector<double> uppper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
                     upp1.push_back(uppper_vec[0]);
                     upp2.push_back(uppper_vec[1]);
+                    upp3.push_back(uppper_vec[2]);
 
                     summer--;
                 }
@@ -1257,7 +1262,7 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
                     vector<double> upper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
                     up1.push_back(upper_vec[0]);
                     up2.push_back(upper_vec[1]);
-
+                    up3.push_back(upper_vec[2]);
                     summer--;
                 }
                 case 2: {
@@ -1267,6 +1272,7 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
                     vector<double> under_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
                     u1.push_back(under_vec[0]);
                     u2.push_back(under_vec[1]);
+                    u3.push_back(under_vec[2]);
 
 
                 }
@@ -1276,8 +1282,7 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
                     vector<double> vec=sumvec(scalevec(x1,k),scalevec(x2,l));
                     p1.push_back(vec[0]);
                     p2.push_back(vec[1]);
-
-
+                    p3.push_back(0);
                 }
                 default: break;
             }
@@ -1285,20 +1290,27 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
     }
     }
    
-    bool bo=plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv",upp1,upp2,"yh");
+    plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv",upp1,upp2,"yh");
     //string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
-    string title="d="+to_string(d)+", l="+to_string(layers)+", vD="+to_string(volDensity)+", lD="+to_string(density)+", energy="+to_string(energy);
+    string title="d="+to_string(d)+", l="+to_string(layers)+", vD="+to_string(volDensity)+", lD="+to_string(density)+", E="+to_string(energy);
     plt::title(title);
     //cout<<bo;
     //bo=plt::plot(p1,p2);
     //cout<<bo;
     plt::axis("equal");
     //plt::show();
-    plt::save(plotname);
-    
-    cout<<"Plot Saved"<<endl;   
-}
 
+    string plotname1=plotname+"_1.png";
+    plt::save(plotname1);
+
+    plt::clf();
+
+    plt::plot(p1,p3,"ro",u1,u3,"bs",up1,up3,"gv",upp1,upp3,"yh");
+    plt::title(title);
+
+    string plotname2=plotname+"_2.png";
+    plt::save(plotname2);
+}
 
 
 
@@ -1313,7 +1325,7 @@ int main(){
                 cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
 
                 density=volDensity/layers;
-                Fitness fit;
+                fit.calcTric();
                 Generation gen(ind_size,8,6);
 
                 for(int i=0;i<generations;i++){
@@ -1350,7 +1362,7 @@ int main(){
                 cout<<"Energy="<<energy_value<<endl<<endl<<endl;
 
 
-                string plotname="dens="+to_string(volDensity)+"_d="+to_string(d)+"_l="+to_string(layers)+".png";
+                string plotname="dens="+to_string(volDensity)+"_d="+to_string(d)+"_l="+to_string(layers);
                 plotCell(top,plotname,energy_value);
             }
         }
