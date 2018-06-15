@@ -21,15 +21,15 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*8;
+double d=lambda*10;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
 
 
-int const layers=4;
-const double volDensity=0.4;      
-const double density=volDensity/layers;  //density in Layer
+int layers=2;
+double volDensity=0.4;      
+double density=volDensity/layers;  //density in Layer
 
 
 
@@ -1303,8 +1303,59 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
 
 
 int main(){
-    int ind_size=4000;
 
+    const int ind_size=4000;
+    const int generations=200;
+
+    for(volDensity=0.1;volDensity<=1;volDensity+=0.02){
+        for(d=1;d<=10;d+=0.2){
+            for(layers=2;layers<=4;layers++){
+                cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
+
+                density=volDensity/layers;
+                Fitness fit;
+                Generation gen(ind_size,8,6);
+
+                for(int i=0;i<generations;i++){
+                    gen_i=i+1;  //for better GA performance, see fitness function
+                    if(!(i%10)) cout<<endl<<"Generation "<<i<<" of "<<generations<<endl;
+
+                    gen.nextGen(ind_size);
+                }
+                
+                cout<<"GA calculated stats:"<<endl;
+                Individual best=gen.getLastBest();
+
+                Climber climb;
+                vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy(),best.getH());
+                cout<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl;
+                cout<<"H Values(h,cx,cy):"<<endl;
+
+
+                vector<double> hFit;
+                vector<double> cxFit;
+                vector<double> cyFit;
+                for(int i=2;i<top.size();i+=3){
+                    cout<<(i-2)/3<<":"<<endl;
+                    cout<<top[i]<<endl;
+                    cout<<top[i+1]<<endl;
+                    cout<<top[i+2]<<endl<<endl;
+                    hFit.push_back(top[i]);
+                    cxFit.push_back(top[i+1]);
+                    cyFit.push_back(top[i+2]);
+                }
+                cout<<"Fitness="<<fit(top[0],top[1],false,cxFit,cyFit,hFit)<<endl;
+                Energy energy;
+                double energy_value=energy(top[0],top[1],cxFit,cyFit,hFit);
+                cout<<"Energy="<<energy_value<<endl<<endl<<endl;
+
+
+                string plotname="dens="+to_string(volDensity)+"_d="+to_string(d)+"_l="+to_string(layers)+".png";
+                plotCell(top,plotname,energy_value);
+            }
+        }
+    }
+/*
     Fitness fit;
 
     Generation gen(ind_size,8,6);
@@ -1313,7 +1364,7 @@ int main(){
    
     for(int j=1;j<=1000;j++){
         /*d=0.1*j*lambda;
-        tric.setH();*/
+        tric.setH();
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
 
