@@ -434,7 +434,7 @@ class Individual{
             dret*=getA();
 
             double sub=0;
-            if(i>0) for(int i=0;i<ret.size()-1;i++) sub+=ret[i];
+            if(i>0) for(int j=0;j<ret.size();j++) sub+=ret[j];
             dret-=sub;
             ret.push_back(dret);
         }
@@ -453,7 +453,7 @@ class Individual{
             dret*=getA()*getX()*sin(getPhi());
             
             double sub=0;
-            if(i>0) for(int i=0;i<ret.size()-1;i++) sub+=ret[i];
+            if(i>0) for(int j=0;i<ret.size();j++) sub+=ret[j];
             dret-=sub;
 
             ret.push_back(dret);
