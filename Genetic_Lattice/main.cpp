@@ -21,19 +21,19 @@ using namespace std;
 
 
 double const lambda=1;
-double d=lambda*10;
+double d=lambda*8;
 int n=100;
 double gen_i=1;
 int const bitlen=10;
 
 
-int const layers=3;
-const double volDensity=1;      
+int const layers=4;
+const double volDensity=0.4;      
 const double density=volDensity/layers;  //density in Layer
 
 
 
-double rcut=lambda*10;
+double rcut=lambda*15;
 //int kmax=15;
 //int lmax=15;
 
@@ -426,14 +426,16 @@ class Individual{
         vector<double> ret;
         for(int i=0;i<cx.size();i++){
             long accum=cx[i].to_ulong();
-            accum;
 
             
             double dret=accum;
             dret/=pow(2,cx[i].size());
 
             dret*=getA();
-            if(i>0) dret-=ret[i-1];
+
+            double sub=0;
+            if(i>0) for(int i=0;i<ret.size()-1;i++) sub+=ret[i];
+            dret-=sub;
             ret.push_back(dret);
         }
         return ret;
@@ -444,13 +446,16 @@ class Individual{
 
         for(int i=0;i<cy.size();i++){
             long accum=cy[i].to_ulong();
-            accum;
         
 
             double dret=accum;
             dret/=pow(2,cy[i].size());
             dret*=getA()*getX()*sin(getPhi());
-            if(i>0) dret-=ret[i-1];     //sets shift to 0
+            
+            double sub=0;
+            if(i>0) for(int i=0;i<ret.size()-1;i++) sub+=ret[i];
+            dret-=sub;
+
             ret.push_back(dret);
         }
         return ret;
@@ -1298,7 +1303,7 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
 
 
 int main(){
-    int ind_size=2000;
+    int ind_size=4000;
 
     Fitness fit;
 
@@ -1312,7 +1317,7 @@ int main(){
         using namespace std::chrono;
         high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
 
-        int imax=100;
+        int imax=200;
 
         for(int i=0;i<imax;i++){
             gen_i=i+1;
