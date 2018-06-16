@@ -193,7 +193,7 @@ class LatticeSum{
             x3.push_back(vec);
         }
 
-        
+        /*
         if(min){
             vector<vector<double>> cell=minimizeCell(x1,x2);   
             x1=cell[0];
@@ -201,14 +201,14 @@ class LatticeSum{
             x1.push_back(0);
             x2.push_back(0);
         }
-        
+        */
         
         int lmax=rcut/a/x;///sin(phi);
         lmax++;
         int kmax=rcut/a;
         kmax++;
 
-        for(int i=0;i<h.size();i++){
+        for(int i=0;i<=h.size();i++){
             //calculate layer
             for(int k=-kmax;k<=kmax;++k){
             for(int l=-lmax;l<=lmax;++l){
@@ -220,7 +220,7 @@ class LatticeSum{
                 vertVec=sumvec(x3[j],vertVec);
                 for(int k=-kmax;k<=kmax;++k){
                 for(int l=-lmax;l<=lmax;++l){
-                sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
+                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
                 }}
             }
             vertVec=veczero;
@@ -228,7 +228,7 @@ class LatticeSum{
                 vertVec=sumvec(x3[j],vertVec);
                 for(int k=-kmax;k<=kmax;++k){
                 for(int l=-lmax;l<=lmax;++l){
-                sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
+                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
                 }}
             }
         }
@@ -270,7 +270,7 @@ class Fitness{
         double operator() (double x,double phi,bool min,vector<double> cx,vector<double> cy,vector<double> h=veczero) const{
             //if(phi<PI/6) return 0;  //deletes non sensical solutions
             double sum=latticeSum(x,phi,potential,min,cx,cy,h);
-            return exp(1-pow(sum/tric_sum,1.+gen_i*0.1));
+            return exp(1-pow(sum/tric_sum,1.+gen_i*0.05));
         }
 } fit;
 
@@ -479,7 +479,6 @@ class Individual{
 
         for(int i=0;i<h.size();i++){
             long accum=h[i].to_ulong();
-            accum;
 
             double element=accum;
             element/=pow(2,h[i].size());
@@ -1326,7 +1325,7 @@ int main(){
     const int ind_size=4000;
     const int generations=200;
 
-    for(volDensity=0.1;volDensity<=1;volDensity+=0.02){
+    for(volDensity=0.5;volDensity<=1;volDensity+=0.02){
         for(d=1;d<=10;d+=0.2){
             for(layers=2;layers<=4;layers++){
                 cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
