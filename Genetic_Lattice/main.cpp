@@ -33,7 +33,7 @@ double density=d*volDensity/layers;  //density in Layer
 
 
 
-double const rcut=lambda*15;
+double const rcut=lambda*10;
 //int kmax=15;
 //int lmax=15;
 
@@ -1325,7 +1325,7 @@ int main(){
     const int ind_size=4000;
     const int generations=200;
 
-    for(volDensity=0.5;volDensity<=1;volDensity+=0.02){
+    for(volDensity=0.1;volDensity<=1;volDensity+=0.02){
         for(d=1;d<=10;d+=0.2){
             for(layers=2;layers<=4;layers++){
                 cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
