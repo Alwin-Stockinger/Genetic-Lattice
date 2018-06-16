@@ -29,11 +29,11 @@ int const bitlen=10;
 
 int layers=2;
 double volDensity=0.4;      
-double density=volDensity/layers;  //density in Layer
+double density=d*volDensity/layers;  //density in Layer
 
 
 
-double rcut=lambda*15;
+double const rcut=lambda*15;
 //int kmax=15;
 //int lmax=15;
 
@@ -50,26 +50,33 @@ struct Tric{
     public:
     double const phi=PI/2.;
     double const x=1;
-    double const a=1./sqrt(x*sin(phi)*density);
+    double a;
     vector<double> cx;
     vector<double> cy;
     vector<double> hTric;
 
     Tric(){
+        a=1./sqrt(x*sin(phi)*density);
+        setH();
+        setCx();
+        setCy();
+    }
+    void calculateTric(){
+        a=1./sqrt(x*sin(phi)*density);
         setH();
         setCx();
         setCy();
     }
 
     void setH(){
-        hTric.erase(hTric.begin(),hTric.end());
+        hTric.clear();
         for(int i=0;i<layers-1;i++){
             hTric.push_back(d/(layers-1.));
         }
     }
 
     void setCx(){
-        cx.erase(cx.begin(),cx.end());
+        cx.clear();
         for(int i=0;i<layers-1;i++){
             if(i%2) cx.push_back(a/(2.));
             else cx.push_back(a/(-2.));
@@ -77,7 +84,7 @@ struct Tric{
     }
 
     void setCy(){
-        cy.erase(cy.begin(),cy.end());
+        cy.clear();
         for(int i=0;i<layers-1;i++){
             if(i%2) cy.push_back(a*x*sin(phi)/(2.));
             else cy.push_back(-a*x*sin(phi)/(2.));
@@ -1324,13 +1331,15 @@ int main(){
             for(layers=2;layers<=4;layers++){
                 cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
 
-                density=volDensity/layers;
+                density=d*volDensity/layers;
+                tric.calculateTric();
                 fit.calcTric();
+
                 Generation gen(ind_size,8,6);
 
                 for(int i=0;i<generations;i++){
                     gen_i=i+1;  //for better GA performance, see fitness function
-                    if(!(i%10)) cout<<endl<<"Generation "<<i<<" of "<<generations<<endl;
+                    if(!(i%10)) cout<<"Generation "<<i<<" of "<<generations<<endl<<endl;
 
                     gen.nextGen(ind_size);
                 }
