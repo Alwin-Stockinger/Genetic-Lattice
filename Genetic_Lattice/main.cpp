@@ -28,17 +28,17 @@ int const bitlen=10;
 
 
 int layers=2;
-double volDensity=0.4;      
+double volDensity=0.1;      
 double density=d*volDensity/layers;  //density in Layer
 
 
 
-double const rcut=lambda*10;
+double const rcut=lambda*8;
 //int kmax=15;
 //int lmax=15;
 
 int parent_amount=2;        //changes in code have to be made!!!
-double mutation_rate=0.1;
+double mutation_rate=0.05;
 
 vector<double> veczero={0,0,0};
 
@@ -98,7 +98,7 @@ struct Tric{
 class Potential{
     public:
     double operator() (double r) const{
-        return exp(-r/lambda)/r;
+        return exp(-r)/r;
     }
 };
 
@@ -208,13 +208,15 @@ class LatticeSum{
         int kmax=rcut/a;
         kmax++;
 
+        for(int k=-kmax;k<=kmax;++k){
+                for(int l=-lmax;l<=lmax;++l){
+                    if(!(l==0&&k==0)) sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l))));
+            }
+        }
+        sum*=layers;
+
         for(int i=0;i<=h.size();i++){
             //calculate layer
-            for(int k=-kmax;k<=kmax;++k){
-            for(int l=-lmax;l<=lmax;++l){
-                if(!(l==0&&k==0)) sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l))));
-            }
-            }
             vector<double> vertVec=veczero;
             for(int j=i-1;j>=0;j--){    //calculate layers under the current layer
                 vertVec=sumvec(x3[j],vertVec);
@@ -234,6 +236,59 @@ class LatticeSum{
         }
     
         return sum;
+    }
+
+
+     double operator() (double x, double phi, Potential v, vector<double> cx, vector<double> cy,vector<double> h) const{    //calculates just interaction energy between layers
+        double sum=0;
+        double a=1./sqrt(x*sin(phi)*density);
+        vector<double> x1={a,0,0};
+        vector<double> x2={a*x*cos(phi),a*x*sin(phi),0};
+        vector<vector<double>> x3;
+
+        for(int i=0;i<h.size();i++){
+            vector<double> vec={cx[i],cy[i],h[i]};
+            x3.push_back(vec);
+        }
+
+        /*
+        if(min){
+            vector<vector<double>> cell=minimizeCell(x1,x2);   
+            x1=cell[0];
+            x2=cell[1];
+            x1.push_back(0);
+            x2.push_back(0);
+        }
+        */
+        
+        int lmax=rcut/a/x;///sin(phi);
+        lmax++;
+        int kmax=rcut/a;
+        kmax++;
+
+        
+
+        for(int i=0;i<=h.size();i++){
+            //calculate layer
+            vector<double> vertVec=veczero;
+            for(int j=i-1;j>=0;j--){    //calculate layers under the current layer
+                vertVec=sumvec(x3[j],vertVec);
+                for(int k=-kmax;k<=kmax;++k){
+                for(int l=-lmax;l<=lmax;++l){
+                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
+                }}
+            }
+            vertVec=veczero;
+            for(int j=i;j<x3.size();j++){    //calculate layers above the current layer
+                vertVec=sumvec(x3[j],vertVec);
+                for(int k=-kmax;k<=kmax;++k){
+                for(int l=-lmax;l<=lmax;++l){
+                    sum+=v(euclid(sumvec(scalevec(x1,k),scalevec(x2,l),vertVec)));
+                }}
+            }
+        }
+    
+        return sum/layers;
     }
 };
 
@@ -672,11 +727,12 @@ public:
         for(int i=0;i<cx.size();i++){
             /*if(cx[i]>a) cx[i]-=a;
             if(cy[i]>a) cy[i]-=a;*/
-            if(cx[i]<cy[i]){
+            if(abs(cx[i])<abs(cy[i])){
                 bitset<bitlen> temp=(this->cx)[i];
                 (this->cx)[i]=(this->cy)[i];
                 (this->cy)[i]=temp;
             }
+            
         }
         
         vector<double> h=getH();
@@ -1325,9 +1381,9 @@ int main(){
     const int ind_size=4000;
     const int generations=200;
 
-    for(volDensity=0.1;volDensity<=1;volDensity+=0.02){
-        for(d=1;d<=10;d+=0.2){
-            for(layers=2;layers<=4;layers++){
+    for(volDensity=0.1;volDensity<=0.1;volDensity+=0.02){
+        for(d=6.16;d<=6.2;d+=0.02){
+            for(layers=3;layers<=4;layers+=1){
                 cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
 
                 density=d*volDensity/layers;
@@ -1367,11 +1423,15 @@ int main(){
                 cout<<"Fitness="<<fit(top[0],top[1],false,cxFit,cyFit,hFit)<<endl;
                 Energy energy;
                 double energy_value=energy(top[0],top[1],cxFit,cyFit,hFit);
-                cout<<"Energy="<<energy_value<<endl<<endl<<endl;
+                cout<<"Energy="<<energy_value<<endl;
+                LatticeSum latticeSum;
+                Potential v;
+                cout<<"Energy of Interaction between Layers="<<latticeSum(top[0],top[1],v,cxFit,cyFit,hFit)<<endl<<endl;
 
 
                 string plotname="dens="+to_string(volDensity)+"_d="+to_string(d)+"_l="+to_string(layers);
                 plotCell(top,plotname,energy_value);
+                
             }
         }
     }
