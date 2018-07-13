@@ -33,7 +33,7 @@ double density=d*volDensity/layers;  //density in Layer
 
 
 
-double const rcut=lambda*8;
+double const rcut=lambda*6;
 //int kmax=15;
 //int lmax=15;
 
@@ -1291,6 +1291,8 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
     vector<double> u1,u2,u3;
     vector<double> up1,up2,up3;
     vector<double> upp1,upp2,upp3;
+    vector<double> p5_1,p5_2,p5_3;
+    vector<double> p6_1,p6_2,p6_3;
 
     
     int lmax=3;
@@ -1306,6 +1308,30 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
             int summer=layers-1;
 
             switch (layers){
+                case 6:{
+                    vector<double> sumC=c[0];
+                    for(int i=1;i<summer;i++) sumC=sumvec(sumC,c[i]);
+
+                    vector<double> uppper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
+                    p6_1.push_back(uppper_vec[0]);
+                    p6_2.push_back(uppper_vec[1]);
+                    p6_3.push_back(uppper_vec[2]);
+
+                    summer--;
+                }
+
+                case 5:{
+                    vector<double> sumC=c[0];
+                    for(int i=1;i<summer;i++) sumC=sumvec(sumC,c[i]);
+
+                    vector<double> uppper_vec=sumvec(scalevec(x1,k),scalevec(x2,l),sumC);
+                    p5_1.push_back(uppper_vec[0]);
+                    p5_2.push_back(uppper_vec[1]);
+                    p5_3.push_back(uppper_vec[2]);
+
+                    summer--;
+                }
+
                 case 4:{
                     vector<double> sumC=c[0];
                     for(int i=1;i<summer;i++) sumC=sumvec(sumC,c[i]);
@@ -1352,7 +1378,7 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
     }
     }
    
-    plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv",upp1,upp2,"yh");
+    plt::plot(p1,p2,"ro",u1,u2,"bs",up1,up2,"gv",upp1,upp2,"yh",p5_1,p5_2,"rs",p6_1,p6_2,"bo");
     //string title="x="+to_string(x)+" , phi="+to_string(phi/PI*180.)+" , fitness="+to_string(fitness);
     string title="d="+to_string(d)+", l="+to_string(layers)+", vD="+to_string(volDensity)+", lD="+to_string(density)+", E="+to_string(energy);
     plt::title(title);
@@ -1367,7 +1393,7 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
 
     plt::clf();
 
-    plt::plot(p1,p3,"ro",u1,u3,"bs",up1,up3,"gv",upp1,upp3,"yh");
+    plt::plot(p1,p3,"ro",u1,u3,"bs",up1,up3,"gv",upp1,upp3,"yh",p5_1,p5_3,"rs",p6_1,p6_3,"bo");
     plt::title(title);
 
     string plotname2=plotname+"_2.png";
@@ -1379,11 +1405,11 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
 int main(){
 
     const int ind_size=4000;
-    const int generations=200;
+    const int generations=300;
 
     for(volDensity=0.1;volDensity<=0.1;volDensity+=0.02){
-        for(d=6.16;d<=6.2;d+=0.02){
-            for(layers=3;layers<=4;layers+=1){
+        for(d=3.6;d<=3.8;d+=0.01){
+            for(layers=2;layers<=6;layers+=1){
                 cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
 
                 density=d*volDensity/layers;
