@@ -11,6 +11,7 @@
 #include<mutex>
 #include<chrono>
 #include<ctime>
+#include<fstream>
 
 #include "matplotlibcpp.h"
 
@@ -33,7 +34,7 @@ double density=d*volDensity/layers;  //density in Layer
 
 
 
-double const rcut=lambda*6;
+double const rcut=lambda*7;
 //int kmax=15;
 //int lmax=15;
 
@@ -44,7 +45,7 @@ vector<double> veczero={0,0,0};
 
 int threadcount=4;
 
-int survivors=1;//this many best genes will deifnitly survive
+int survivors=10;//this many best genes will deifnitly survive
 
 struct Tric{
     public:
@@ -323,7 +324,7 @@ class Fitness{
         }
         
         double operator() (double x,double phi,bool min,vector<double> cx,vector<double> cy,vector<double> h=veczero) const{
-            //if(phi<PI/6) return 0;  //deletes non sensical solutions
+            
             double sum=latticeSum(x,phi,potential,min,cx,cy,h);
             return exp(1-pow(sum/tric_sum,1.+gen_i*0.05));
         }
@@ -728,9 +729,10 @@ public:
             /*if(cx[i]>a) cx[i]-=a;
             if(cy[i]>a) cy[i]-=a;*/
             if(abs(cx[i])<abs(cy[i])){
-                bitset<bitlen> temp=(this->cx)[i];
+                std::swap((this->cx)[i],(this->cy)[i]);
+                /*bitset<bitlen> temp=(this->cx)[i];
                 (this->cx)[i]=(this->cy)[i];
-                (this->cy)[i]=temp;
+                (this->cy)[i]=temp;*/
             }
             
         }
@@ -797,7 +799,7 @@ public:
 
 
 
-bool fitComp(Individual a, Individual b){ return a.getFitness()<b.getFitness();}
+bool fitComp(Individual a, Individual b){ return a.getFitness()>b.getFitness();}
 
 
 
@@ -809,11 +811,17 @@ class Generation{
     mutex child_lock;
 
     void createChildren(vector<Individual> *children,int size){
-        for(int i=0;i<size;i+=2){      // double because 2 children are created
-            vector<Individual> child=genChild();
+        int per_thread=100;
+        for(int i=0;i<per_thread;i+=1){      // 2 children are created
+            vector<Individual> childs;
+            for(int j=0;j<size/(threadcount*per_thread);j+=2){
+                vector<Individual> child=genChild();
+                childs.insert(childs.end(),child.begin(),child.end());
+            }
+            
             //cout<<"First child generated"<<endl;
             child_lock.lock();
-            children->insert(children->end(),child.begin(),child.end());
+            children->insert(children->end(),childs.begin(),childs.end());
             child_lock.unlock();
         }
     }
@@ -868,16 +876,20 @@ class Generation{
         vector<Individual> surv=getSurvivors(survivors);
         children.insert(children.end(),surv.begin(),surv.end());
         
+
         //cout<<"Children become Parents"<<endl;
         indiv=children;
-        children.clear();
+        //cout<<getBest().getFitness()<<endl;
+        //children.clear();
         //printBest();
     }
     
     vector<Individual> getSurvivors(int count){
         vector<Individual> survivors=indiv;
-        std::sort(indiv.begin(),indiv.end(),fitComp);
+        std::sort(survivors.begin(),survivors.end(),fitComp);
+
         survivors.resize(count);
+        //cout<< survivors[0].getFitness()<<endl;        
         return survivors;
     }
 
@@ -1402,13 +1414,22 @@ void plotCell(vector<double> top,string plotname="crystall.png",double energy=0)
 
 
 
+
 int main(){
 
-    const int ind_size=4000;
-    const int generations=300;
+    const int ind_size=8000;
+    const int generations=500;
 
     for(volDensity=0.1;volDensity<=0.1;volDensity+=0.02){
-        for(d=3.6;d<=3.8;d+=0.01){
+        string energy_file_name="energy_dens="+to_string(volDensity)+".csv";
+
+
+        for(d=5.8;d<=10;d+=0.2){
+
+            ofstream energy_file(energy_file_name,ios::app);
+            energy_file<<d<<",";
+            energy_file.close();
+
             for(layers=2;layers<=6;layers+=1){
                 cout<<"Now calculating dens="<<volDensity<<" d="<<d<<" layers="<<layers<<endl;
 
@@ -1418,11 +1439,14 @@ int main(){
 
                 Generation gen(ind_size,8,6);
 
+
+                vector<Individual> bestVec;
+
                 for(int i=0;i<generations;i++){
                     gen_i=i+1;  //for better GA performance, see fitness function
                     if(!(i%10)) cout<<"Generation "<<i<<" of "<<generations<<endl<<endl;
-
                     gen.nextGen(ind_size);
+                    bestVec.push_back(gen.getBest());
                 }
                 
                 cout<<"GA calculated stats:"<<endl;
@@ -1458,95 +1482,26 @@ int main(){
                 string plotname="dens="+to_string(volDensity)+"_d="+to_string(d)+"_l="+to_string(layers);
                 plotCell(top,plotname,energy_value);
                 
+                //write best to file
+                ofstream writefile;
+                writefile.open("best_"+plotname+".csv");
+                for(Individual indiv:bestVec){
+                    writefile<<indiv.getFitness()<<endl;
+                }
+                writefile.close();
+                
+                energy_file.open(energy_file_name,ios::app);
+                energy_file<<energy_value<<",";
+                energy_file.close();
             }
+            energy_file.open(energy_file_name,ios::app);
+            energy_file<<endl;
+            energy_file.close();
+
+            
+
         }
     }
-/*
-    Fitness fit;
-
-    Generation gen(ind_size,8,6);
-
-  
-   
-    for(int j=1;j<=1000;j++){
-        /*d=0.1*j*lambda;
-        tric.setH();
-        using namespace std::chrono;
-        high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
-
-        int imax=200;
-
-        for(int i=0;i<imax;i++){
-            gen_i=i+1;
-            //cout<<gen_i<<" ";
-            //d=j*0.1;
-                //high_resolution_clock::time_point t_start_parallel = high_resolution_clock::now();
-            cout<<endl<<"Generation "<<i<<" of "<<imax<<endl;
-            gen.nextGen(ind_size);
-                //high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
-                //duration<double> time_parallel = t_end_parallel - t_start_parallel;
-                //cout << "Execution time: " << time_parallel.count()<<endl;
-            
-            
-            Individual best=gen.getBest();
-            //best.printStats();
-            string plotname="Generation";
-            plotname+=to_string(i);
-            plotname+=".png";
-            best.calcFitness();
-                //plotCell(best.getX(),best.getPhi(),plotname,best.getFitness());
-            
-        }
-        cout<<endl;
-        //gen.printIndiv();
-        cout<<endl<<endl<<"Winners of the Evolution Contest "<<j<<" :"<<endl;
-        Individual best=gen.getLastBest();
-        //best.correctCell();
-
-        //best.printStats();
-        //cout<<endl<<endl<<"ALL THE INDIVS"<<endl;
-        //gen.printIndiv();
-        Climber climb;
-        vector<double> top= climb.hillclimb(best.getX(),best.getPhi(),fit,best.getCx(),best.getCy(),best.getH());
-        cout<<endl<<endl<<"After he climbed the hill:"<<endl<<"X="<<top[0]<<endl<<"Phi="<<top[1]*180/PI<<endl<<"a="<<(1./sqrt(density*top[0]*sin(top[1])))<<endl;
-        cout<<"H Values(h,cx,cy):"<<endl;
-
-        vector<double> hFit;
-        vector<double> cxFit;
-        vector<double> cyFit;
-        for(int i=2;i<top.size();i+=3){
-            cout<<(i-2)/3<<":"<<endl;
-            cout<<top[i]<<endl;
-            cout<<top[i+1]<<endl;
-            cout<<top[i+2]<<endl<<endl;
-            hFit.push_back(top[i]);
-            cxFit.push_back(top[i+1]);
-            cyFit.push_back(top[i+2]);
-        }
-        cout<<"Fitness="<<fit(top[0],top[1],false,cxFit,cyFit,hFit)<<endl;
-        Energy energy;
-        double energy_value=energy(top[0],top[1],cxFit,cyFit,hFit);
-        cout<<"Energy="<<energy_value<<endl;
-        string plotname="crystall";
-        plotname+=to_string(j);
-        plotname+=".png";
-        plotCell(top,plotname,energy_value);
-
-        high_resolution_clock::time_point t_end_parallel = high_resolution_clock::now();
-        duration<double> time_parallel = t_end_parallel - t_start_parallel;
-        cout << "Execution time: " << time_parallel.count()<<endl;
-
-
-
-        gen_i=1;
-    }/*
-    vector<bool> x={0,1,1,0,1,1,1,0};
-    vector<bool> phi={0,0,0,0,0,0,0};
-    Individual a(8,6);
-    a.setVecPhi(PI/3);
-    a.correctCell();
-    cout<<a.getPhi()<<endl;*/
-    
     
     cout<<"FINISHED! \nEnter anything to close"<<endl;
     bool close;
