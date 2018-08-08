@@ -34,7 +34,7 @@ double density=d*volDensity/layers;  //density in Layer
 
 
 
-double const rcut=lambda*7;
+double const rcut=lambda*15;
 //int kmax=15;
 //int lmax=15;
 
@@ -99,7 +99,7 @@ struct Tric{
 class Potential{
     public:
     double operator() (double r) const{
-        return exp(-r)/r;
+        return exp(-r*r);
     }
 };
 
@@ -1420,11 +1420,11 @@ int main(){
     const int ind_size=8000;
     const int generations=500;
 
-    for(volDensity=0.1;volDensity<=0.1;volDensity+=0.02){
+    for(volDensity=0.5;volDensity<=0.5;volDensity+=0.02){
         string energy_file_name="energy_dens="+to_string(volDensity)+".csv";
 
 
-        for(d=5.8;d<=10;d+=0.2){
+        for(d=1;d<=10;d+=0.2){
 
             ofstream energy_file(energy_file_name,ios::app);
             energy_file<<d<<",";
