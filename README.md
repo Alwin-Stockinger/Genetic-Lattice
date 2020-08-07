@@ -1,1 +1,1 @@
-Bachelor Thesis
+Physics Bachelor Thesis
